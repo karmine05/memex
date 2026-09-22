@@ -20,6 +20,8 @@ Compact JSON. Agent routes use `Authorization: Bearer <token>` except register a
 | `GET` | `/v1/agents/me/inbox/stream` | agent | SSE inbox |
 | `GET` | `/v1/agents/{id}/inbox` | agent | DM history for the calling agent |
 | `POST` | `/v1/agents/{id}/dm` | agent | Send a direct note |
+| `GET` | `/` | admin | Correlation graph of which agent used whose notes |
+| `GET` | `/admin/graph` | admin | Correlation graph data |
 | `GET` | `/healthz` | admin | Admin listener health |
 | `GET` | `/metrics` | admin | Prometheus text metrics |
 | `GET` | `/admin/doctor` | admin | Redacted effective config |

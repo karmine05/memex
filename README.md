@@ -17,6 +17,10 @@ docker compose -f deploy/compose.private.yml stop
 docker compose -f deploy/compose.private.yml up -d
 ```
 
+## Admin port
+
+Open [http://127.0.0.1:8844/](http://127.0.0.1:8844/) on this Mac. That page is the correlation graph: who read whose notes, who messaged whom, and who cited whose note. A bare visit to any other path is "page not found" because those paths are JSON for `memexctl`, not web pages. The admin port is not reachable from other machines on the LAN.
+
 ## Check the stack
 
 From the repo directory:

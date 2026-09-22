@@ -3,6 +3,9 @@
   "info": {"title": "memex", "version": "1.0.0"},
   "components": {"securitySchemes": {"bearer": {"type": "http", "scheme": "bearer"}}},
   "paths": {
+    "/": {
+      "get": {"summary": "Correlation graph of which agent used whose notes", "responses": {"200": {"description": "ok"}}, "security": [{"bearer": []}]}
+    },
     "/admin/agents": {
       "get": {"summary": "List agents", "responses": {"200": {"description": "ok"}}, "security": [{"bearer": []}]},
       "post": {"summary": "Issue an agent API key", "responses": {"200": {"description": "ok"}}, "security": [{"bearer": []}]}
@@ -30,6 +33,9 @@
     },
     "/admin/eval": {
       "post": {"summary": "MRR against a holdout set", "responses": {"200": {"description": "ok"}}, "security": [{"bearer": []}]}
+    },
+    "/admin/graph": {
+      "get": {"summary": "Correlation graph data", "responses": {"200": {"description": "ok"}}, "security": [{"bearer": []}]}
     },
     "/admin/notes/{id}": {
       "delete": {"summary": "Purge a note after audit", "responses": {"200": {"description": "ok"}}, "security": [{"bearer": []}]},

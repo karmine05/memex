@@ -62,6 +62,8 @@ func Routes() []Route {
 		{ID: "agent_inbox", Method: "GET", Mux: "/v1/agents/{id}/inbox", Path: "/v1/agents/{id}/inbox", Audience: "agent", Summary: "DM history for the calling agent"},
 		{ID: "dm", Method: "POST", Mux: "/v1/agents/{id}/dm", Path: "/v1/agents/{id}/dm", Audience: "agent", Summary: "Send a direct note"},
 
+		{ID: "admin_home", Method: "GET", Mux: "/", Path: "/", Audience: "admin", Summary: "Correlation graph of which agent used whose notes"},
+		{ID: "admin_graph", Method: "GET", Mux: "/admin/graph", Path: "/admin/graph", Audience: "admin", Summary: "Correlation graph data"},
 		{ID: "admin_health", Method: "GET", Mux: "/healthz", Path: "/healthz", Audience: "admin", Summary: "Admin listener health"},
 		{ID: "metrics", Method: "GET", Mux: "/metrics", Path: "/metrics", Audience: "admin", Summary: "Prometheus text metrics"},
 		{ID: "doctor", Method: "GET", Mux: "/admin/doctor", Path: "/admin/doctor", Audience: "admin", Summary: "Redacted effective config"},
@@ -134,6 +136,10 @@ func (s *Server) handler(id string) http.HandlerFunc {
 		return s.inboxStream
 	case "dm":
 		return s.dm
+	case "admin_home":
+		return s.adminHome
+	case "admin_graph":
+		return s.adminGraph
 	case "metrics":
 		return s.metrics
 	case "doctor":

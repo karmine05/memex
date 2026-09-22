@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>memex agents</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #12141a; color: #e7e3d8; font: 15px/1.4 ui-sans-serif, system-ui, sans-serif; }
+  header { padding: 16px 20px 0; }
+  h1 { font-size: 20px; font-weight: 600; margin: 0 0 6px; }
+  p { margin: 0; color: #b7b1a4; max-width: 62rem; }
+  #stage { width: 100%; height: calc(100vh - 92px); display: block; }
+  .legend { display: flex; gap: 16px; padding: 8px 20px 0; color: #b7b1a4; }
+  .swatch { display: inline-block; width: 18px; height: 3px; margin-right: 6px; vertical-align: middle; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Who used whose notes</h1>
+  <p>This admin port is not a set of web pages. JSON routes such as /healthz and /admin/agents still exist for memexctl. This graph is the one view. It stays on this Mac.</p>
+</header>
+<div class="legend">
+  <span><i class="swatch" style="background:#7eb6ff"></i>used their note</span>
+  <span><i class="swatch" style="background:#e2b15a"></i>sent a message</span>
+  <span><i class="swatch" style="background:#8fce8f"></i>cited their note</span>
+</div>
+<svg id="stage"></svg>
+<script>
+const colors = { used: "#7eb6ff", sent: "#e2b15a", cited: "#8fce8f" };
+const labels = { used: "used", sent: "sent", cited: "cited" };
+
+async function main() {
+  const res = await fetch("/admin/graph");
+  const data = await res.json();
+  const svg = document.getElementById("stage");
+  const w = svg.clientWidth || 900;
+  const h = svg.clientHeight || 640;
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  const ns = "http://www.w3.org/2000/svg";
+  if (!data.nodes.length) {
+    const t = document.createElementNS(ns, "text");
+    t.setAttribute("x", 24); t.setAttribute("y", 40); t.setAttribute("fill", "#b7b1a4");
+    t.textContent = "No agents yet. Create one with memexctl admin create-agent-key.";
+    svg.appendChild(t);
+    return;
+  }
+  const cx = w / 2, cy = h / 2, r = Math.min(w, h) * 0.34;
+  data.nodes.forEach((n, i) => {
+    const a = (Math.PI * 2 * i) / data.nodes.length - Math.PI / 2;
+    n.x = cx + r * Math.cos(a);
+    n.y = cy + r * Math.sin(a);
+  });
+  const byID = Object.fromEntries(data.nodes.map(n => [n.id, n]));
+  const pairCount = {};
+  for (const e of data.edges) {
+    const k = e.from + ">" + e.to;
+    pairCount[k] = (pairCount[k] || 0) + 1;
+  }
+  const seen = {};
+  for (const e of data.edges) {
+    const a = byID[e.from], b = byID[e.to];
+    if (!a || !b) continue;
+    const k = e.from + ">" + e.to;
+    const slot = seen[k] || 0;
+    seen[k] = slot + 1;
+    const total = pairCount[k];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const ox = (-dy / len) * (slot - (total - 1) / 2) * 16;
+    const oy = (dx / len) * (slot - (total - 1) / 2) * 16;
+    const path = document.createElementNS(ns, "path");
+    const mx = (a.x + b.x) / 2 + ox * 3, my = (a.y + b.y) / 2 + oy * 3;
+    path.setAttribute("d", `M ${a.x} ${a.y} Q ${mx} ${my} ${b.x} ${b.y}`);
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", colors[e.kind] || "#aaa");
+    path.setAttribute("stroke-width", "2");
+    svg.appendChild(path);
+    const label = document.createElementNS(ns, "text");
+    label.setAttribute("x", mx); label.setAttribute("y", my - 6);
+    label.setAttribute("fill", colors[e.kind] || "#aaa");
+    label.setAttribute("font-size", "12");
+    label.setAttribute("text-anchor", "middle");
+    label.textContent = `${labels[e.kind] || e.kind} ${e.count}`;
+    svg.appendChild(label);
+  }
+  for (const n of data.nodes) {
+    const c = document.createElementNS(ns, "circle");
+    c.setAttribute("cx", n.x); c.setAttribute("cy", n.y); c.setAttribute("r", "22");
+    c.setAttribute("fill", "#1d2230"); c.setAttribute("stroke", "#e7e3d8");
+    svg.appendChild(c);
+    const t = document.createElementNS(ns, "text");
+    t.setAttribute("x", n.x); t.setAttribute("y", n.y + 40);
+    t.setAttribute("fill", "#e7e3d8"); t.setAttribute("text-anchor", "middle");
+    t.textContent = n.name;
+    svg.appendChild(t);
+  }
+  if (!data.edges.length) {
+    const t = document.createElementNS(ns, "text");
+    t.setAttribute("x", 24); t.setAttribute("y", h - 24); t.setAttribute("fill", "#b7b1a4");
+    t.textContent = "No cross-agent use yet. An edge appears when one agent reads, messages, or cites another.";
+    svg.appendChild(t);
+  }
+}
+main();
+</script>
+</body>
+</html>

@@ -26,4 +26,16 @@ func TestAdminRoutesAreAbsentFromAgentListener(t *testing.T) {
 	if rr.Code != http.StatusNotFound {
 		t.Fatalf("agent listener status %d", rr.Code)
 	}
+	home := httptest.NewRequest(http.MethodGet, "/", nil)
+	rr = httptest.NewRecorder()
+	h.ServeHTTP(rr, home)
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("agent home status %d", rr.Code)
+	}
+	admin := s.Handler("admin")
+	rr = httptest.NewRecorder()
+	admin.ServeHTTP(rr, home)
+	if rr.Code != http.StatusOK || len(rr.Body.Bytes()) < 100 {
+		t.Fatalf("admin home %d", rr.Code)
+	}
 }
