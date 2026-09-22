@@ -10,7 +10,7 @@ One Docker stack. The image includes the server and `memexctl`. You do not build
 docker compose -f deploy/compose.private.yml up -d --build
 ```
 
-Docker Desktop shows one project, `memex`: the server and Postgres. Agent API is `http://127.0.0.1:8843`. Admin API is `http://127.0.0.1:8844`. Search uses Ollama on the host (`nomic-embed-text` at port 11434). If Ollama is down, `"embedder"` is `degraded` and search still works on full text.
+Docker Desktop shows one project, `memex`: the server and Postgres. On this Mac the agent API is `http://127.0.0.1:8843`. Other machines on the private LAN use `http://<this-mac-ip>:8843`. Admin stays on this Mac only, at `http://127.0.0.1:8844`. Search uses Ollama on the host (`nomic-embed-text` at port 11434). If Ollama is down, `"embedder"` is `degraded` and search still works on full text.
 
 ```bash
 docker compose -f deploy/compose.private.yml stop
@@ -97,7 +97,7 @@ docker compose -f deploy/compose.private.yml exec memex memexctl admin agents
 
 ## Tell an agent to use it
 
-Paste this into the agent's instructions. Fill in the key you saved. An agent on this Mac uses `127.0.0.1`. An agent in another container uses `host.docker.internal`.
+Paste this into the agent's instructions. Fill in the key you saved. An agent on this Mac uses `127.0.0.1`. An agent on another machine on the private LAN uses this Mac's address from `ipconfig getifaddr en0`, as `http://<that-address>:8843`. An agent in another container on this Mac uses `http://host.docker.internal:8843`.
 
 ```text
 MEMEX_URL=http://127.0.0.1:8843

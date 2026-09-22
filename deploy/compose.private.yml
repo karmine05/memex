@@ -24,7 +24,9 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
-      - "127.0.0.1:8843:8843"
+      # Agent API on every interface so other machines on the private LAN can call it.
+      # Admin stays on loopback.
+      - "8843:8843"
       - "127.0.0.1:8844:8844"
     volumes:
       - memexdata:/data
