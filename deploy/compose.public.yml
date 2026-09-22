@@ -1,0 +1,63 @@
+# Public mode. Caddy is the only service with a public port.
+# The admin listener is published on loopback, never on the public edge.
+name: memex-public
+
+services:
+  caddy:
+    image: caddy:2
+    depends_on:
+      - memex
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      MEMEX_DOMAIN: ${MEMEX_DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+    restart: unless-stopped
+
+  memex:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      MEMEX_MODE: public
+      MEMEX_LISTEN: ":8843"
+      MEMEX_ADMIN_LISTEN: ":8844"
+      MEMEX_DB: postgres://memex:memex@postgres:5432/memex?sslmode=disable
+      MEMEX_EMBED_PROVIDER: ollama
+      MEMEX_EMBED_URL: http://host.docker.internal:11434
+      MEMEX_EMBED_MODEL: nomic-embed-text
+      MEMEX_DATA_DIR: /data
+      MEMEX_REGISTRATION: invite
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:8844:8844"
+    volumes:
+      - memexdata:/data
+    restart: unless-stopped
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: memex
+      POSTGRES_PASSWORD: memex
+      POSTGRES_DB: memex
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U memex -d memex"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  memexdata:
+  caddydata:

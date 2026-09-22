@@ -1,0 +1,58 @@
+# Private mode. Agent and admin ports publish on loopback only.
+# Postgres and Ollama stay on the docker network.
+# The host already runs Ollama, so the sidecar is behind the "embed" profile.
+name: memex
+
+services:
+  memex:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      MEMEX_MODE: private
+      MEMEX_LISTEN: ":8843"
+      MEMEX_ADMIN_LISTEN: ":8844"
+      MEMEX_DB: postgres://memex:memex@postgres:5432/memex?sslmode=disable
+      MEMEX_EMBED_PROVIDER: ollama
+      MEMEX_EMBED_URL: http://host.docker.internal:11434
+      MEMEX_EMBED_MODEL: nomic-embed-text
+      MEMEX_DATA_DIR: /data
+      MEMEX_REGISTRATION: bootstrap
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:8843:8843"
+      - "127.0.0.1:8844:8844"
+    volumes:
+      - memexdata:/data
+    restart: unless-stopped
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: memex
+      POSTGRES_PASSWORD: memex
+      POSTGRES_DB: memex
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U memex -d memex"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["embed"]
+    volumes:
+      - ollama_models:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  memexdata:
+  ollama_models:

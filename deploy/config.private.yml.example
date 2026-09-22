@@ -1,0 +1,23 @@
+mode: private
+listen: "127.0.0.1:8843"
+admin_listen: "127.0.0.1:8844"
+db: "postgres://memex:memex@127.0.0.1:5433/memex?sslmode=disable"
+data_dir: data
+embed:
+  provider: ollama
+  model: nomic-embed-text
+  url: http://127.0.0.1:11434
+search:
+  weights:
+    vector: 0.5
+    lexical: 0.3
+    recency: 0.2
+  recency_halflife: 72h
+limits:
+  notes_per_hour: 30
+  bytes_per_hour: 31457280
+  note_max_bytes: 65536
+  note_history_max: 4194304
+  requests_per_minute: 100
+public:
+  registration: bootstrap

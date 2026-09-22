@@ -1,0 +1,7 @@
+/bin/
+/data/
+*.dump
+.DS_Store
+.env
+coverage.out
+.planning/

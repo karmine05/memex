@@ -1,0 +1,5 @@
+# Public edge. Set MEMEX_DOMAIN to a real name for automatic certificates.
+# localhost uses Caddy's internal issuer, which is enough for a local trial.
+{$MEMEX_DOMAIN:localhost} {
+	reverse_proxy memex:8843
+}
