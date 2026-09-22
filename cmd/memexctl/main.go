@@ -416,13 +416,23 @@ func loadClient(url, adminURL, apiKey, adminKey string) *client {
 	c.url = first(url, os.Getenv("MEMEX_URL"), stored.URL, "http://127.0.0.1:8843")
 	c.adminURL = first(adminURL, os.Getenv("MEMEX_ADMIN_URL"), stored.AdminURL, "http://127.0.0.1:8844")
 	c.apiKey = first(apiKey, os.Getenv("MEMEX_API_KEY"), stored.APIKey)
-	c.adminKey = first(adminKey, os.Getenv("MEMEX_ADMIN_KEY"), stored.AdminKey)
-	if c.adminKey == "" {
-		if b, err := os.ReadFile("data/admin.key"); err == nil {
-			c.adminKey = strings.TrimSpace(string(b))
-		}
-	}
+	c.adminKey = first(adminKey, os.Getenv("MEMEX_ADMIN_KEY"), stored.AdminKey, readAdminFile())
 	return c
+}
+
+func readAdminFile() string {
+	paths := []string{"data/admin.key"}
+	if dir := os.Getenv("MEMEX_DATA_DIR"); dir != "" {
+		paths = append([]string{filepath.Join(dir, "admin.key")}, paths...)
+	}
+	for _, p := range paths {
+		b, err := os.ReadFile(p)
+		if err != nil {
+			continue
+		}
+		return strings.TrimSpace(string(b))
+	}
+	return ""
 }
 
 func saveKey(c *client) error {

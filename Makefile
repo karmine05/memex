@@ -19,7 +19,7 @@ imports:
 	go run ./scripts/checkimports.go
 
 up:
-	docker compose -f deploy/compose.dev.yml up -d
+	docker compose -f deploy/compose.private.yml up -d --build
 
 run:
 	go run ./cmd/server

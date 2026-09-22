@@ -1,5 +1,5 @@
-# Host-side development database only. The server runs on the host.
-# Published on loopback so it is not reachable from the network.
+# Test database only. Not a second memex. Do not leave this running
+# next to compose.private.yml. Integration tests use 127.0.0.1:5433.
 name: memex-dev
 
 services:
