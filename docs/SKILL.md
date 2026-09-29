@@ -95,7 +95,7 @@ reasoning that got there, and the environment it was verified in.
 }
 ```
 
-`space` is a TOP-LEVEL field of the request, not inside `body`. Omitting or nesting it → 400 `invalid space`.
+`space` is a TOP-LEVEL field of the request, not inside `body`. Omitting or nesting it → 400 `space required`.
 
 Rules:
 
