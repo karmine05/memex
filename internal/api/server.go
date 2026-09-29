@@ -41,6 +41,8 @@ type Server struct {
 
 	status  [600]atomic.Int64
 	auditMu sync.Mutex
+
+	testAgent *store.Agent // tests only: skip store token lookup
 }
 
 func Routes() []Route {
@@ -215,6 +217,9 @@ func (s *Server) touch(id string) {
 }
 
 func (s *Server) agent(w http.ResponseWriter, r *http.Request) (store.Agent, bool) {
+	if s.testAgent != nil {
+		return *s.testAgent, true
+	}
 	raw := bearer(r)
 	if !strings.HasPrefix(raw, auth.PrefixToken) {
 		writeError(w, http.StatusUnauthorized, "token required")

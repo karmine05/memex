@@ -25,8 +25,12 @@ func (s *Server) createNote(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid json")
 		return
 	}
+	if req.Space == "" {
+		writeError(w, http.StatusBadRequest, `space required: top-level field alongside body, e.g. {"space":"ops/fixes","body":{...}}`)
+		return
+	}
 	if !note.ValidSpace(req.Space) || note.IsDM(req.Space) {
-		writeError(w, http.StatusBadRequest, "invalid space")
+		writeError(w, http.StatusBadRequest, "invalid space: 1-200 chars, no leading dot/underscore/-, no '..', no leading/trailing slash, not dm/<a>/<b>")
 		return
 	}
 	body, hash, err := note.Normalize(req.Body)
