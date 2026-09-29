@@ -114,6 +114,23 @@ func TestPutNoteBaseHashRequired(t *testing.T) {
 	}
 }
 
+func TestTokenIgnoresBodyAndRequiresHeader(t *testing.T) {
+	s := &Server{Cfg: config.Default(), Limit: NewLimiter()}
+	ts := httptest.NewServer(s.Handler("agent"))
+	t.Cleanup(ts.Close)
+	res := callJSON(t, http.MethodPost, ts.URL+"/v1/auth/token", map[string]any{"api_key": "mxk_not_from_header"})
+	if res.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("status %d body %s", res.StatusCode, res.Body)
+	}
+	var got errBody
+	if err := json.Unmarshal([]byte(res.Body), &got); err != nil {
+		t.Fatalf("json %s: %v", res.Body, err)
+	}
+	if got.Error != "api key required" {
+		t.Fatalf("error %q", got.Error)
+	}
+}
+
 func TestGetAgentMeIsInvalidID(t *testing.T) {
 	s := &Server{
 		Cfg:       config.Default(),
