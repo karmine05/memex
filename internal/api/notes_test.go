@@ -118,13 +118,27 @@ func TestTokenIgnoresBodyAndRequiresHeader(t *testing.T) {
 	s := &Server{Cfg: config.Default(), Limit: NewLimiter()}
 	ts := httptest.NewServer(s.Handler("agent"))
 	t.Cleanup(ts.Close)
-	res := callJSON(t, http.MethodPost, ts.URL+"/v1/auth/token", map[string]any{"api_key": "mxk_not_from_header"})
+	b, err := json.Marshal(map[string]any{"api_key": "mxk_not_from_header"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, err := http.NewRequest(http.MethodPost, ts.URL+"/v1/auth/token", bytes.NewReader(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	raw, _ := io.ReadAll(res.Body)
 	if res.StatusCode != http.StatusUnauthorized {
-		t.Fatalf("status %d body %s", res.StatusCode, res.Body)
+		t.Fatalf("status %d body %s", res.StatusCode, raw)
 	}
 	var got errBody
-	if err := json.Unmarshal([]byte(res.Body), &got); err != nil {
-		t.Fatalf("json %s: %v", res.Body, err)
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatalf("json %s: %v", raw, err)
 	}
 	if got.Error != "api key required" {
 		t.Fatalf("error %q", got.Error)
