@@ -227,7 +227,7 @@ function layout() {
     const pulses = [];
     const np = 1 + (e.kind === 'sent' ? 1 : 0);
     for (let k = 0; k < np; k++) pulses.push({ seed: rand(i * 67 + k), speed: KIND_SPEED[e.kind] || 0.2 });
-    edgeObjs.push({ A, C, B, kind: e.kind || 'used', f: Math.min((e.count || 1) / 8, 1), act: 0.35, pulses, from: e.from, to: e.to });
+    edgeObjs.push({ A, C, B, kind: e.kind || 'used', f: Math.min((e.count || 1) / 8, 1), act: 0, rest: 0, pulses, from: e.from, to: e.to });
   });
 }
 function qbez(A, C, B, u) {
@@ -337,9 +337,10 @@ function frame() {
 
   for (const eo of edgeObjs) {
     const c = KIND_COLOR[eo.kind] || KIND_COLOR.used;
-    const a = 0.22 + 0.45 * Math.min(1, eo.act + eo.f);
+    const glow = Math.min(1.6, eo.act + eo.rest + eo.f);
+    const a = 0.18 + 0.55 * glow;
     ctx.strokeStyle = 'rgba(' + Math.round(c[0]*255) + ',' + Math.round(c[1]*255) + ',' + Math.round(c[2]*255) + ',' + a.toFixed(2) + ')';
-    ctx.lineWidth = Math.max(0.8, (1.2 + eo.act) * DPR);
+    ctx.lineWidth = Math.max(0.8, (1.0 + glow) * DPR);
     ctx.beginPath();
     for (let j = 0; j <= 16; j++) {
       const p = qbez(eo.A, eo.C, eo.B, j / 16);
@@ -352,7 +353,7 @@ function frame() {
       const p = qbez(eo.A, eo.C, eo.B, u);
       const [px, py, d] = project(p[0], p[1], p[2], basis);
       if (d < 1) continue;
-      const b = 0.4 + 0.6 * Math.min(eo.act + eo.f, 1.4);
+      const b = 0.35 + 0.65 * glow;
       ctx.fillStyle = 'rgba(' + Math.round(c[0]*255) + ',' + Math.round(c[1]*255) + ',' + Math.round(c[2]*255) + ',' + b.toFixed(2) + ')';
       ctx.beginPath(); ctx.arc(px, py, Math.max(1.4, 26 / d * b), 0, TAU); ctx.fill();
     }
@@ -415,6 +416,10 @@ function actMsg(ev) {
   if (ev.kind === 'wrote') return '<span class="who">' + esc(ev.actor) + '</span> wrote in ' + esc(ev.space || 'a space');
   return esc(ev.kind || 'event');
 }
+function ageHours(iso) {
+  if (!iso) return 1e9;
+  return Math.max(0, (Date.now() - new Date(iso).getTime()) / 3600000);
+}
 function renderFeed(list) {
   const el = $('feedlist');
   el.innerHTML = '';
@@ -428,18 +433,36 @@ function renderFeed(list) {
   for (const ev of list.slice(0, 40)) {
     const row = document.createElement('div');
     row.className = 'ev ' + (ev.kind || '');
+    row.style.cursor = 'pointer';
     row.innerHTML = '<span class="t">' + clock(ev.at) + ' · ' + relTime(ev.at) + '</span>' + actMsg(ev);
+    row.addEventListener('click', () => flashEdge(ev.from, ev.to, 1.4));
     el.appendChild(row);
   }
 }
-function flashEdge(from, to) {
+function flashEdge(from, to, amount) {
+  const amp = amount == null ? 1.0 : amount;
+  let hit = false;
   for (const eo of edgeObjs) {
     if ((eo.from === from && eo.to === to) || (eo.from === to && eo.to === from)) {
-      eo.act = Math.min(1.6, eo.act + 1.0);
+      eo.act = Math.min(1.8, eo.act + amp);
+      hit = true;
     }
   }
-  if (from) nodeExcite.set(from, Math.min(2.5, (nodeExcite.get(from) || 0) + 1.2));
-  if (to) nodeExcite.set(to, Math.min(2.5, (nodeExcite.get(to) || 0) + 1.2));
+  if (from) nodeExcite.set(from, Math.min(2.5, (nodeExcite.get(from) || 0) + amp));
+  if (to) nodeExcite.set(to, Math.min(2.5, (nodeExcite.get(to) || 0) + amp * 0.85));
+  return hit;
+}
+function paintHistory(list) {
+  for (const ev of list) {
+    const hrs = ageHours(ev.at);
+    const w = hrs < 1 ? 1.1 : hrs < 8 ? 0.65 : hrs < 48 ? 0.32 : 0.16;
+    for (const eo of edgeObjs) {
+      if ((eo.from === ev.from && eo.to === ev.to) || (eo.from === ev.to && eo.to === ev.from)) {
+        eo.rest = Math.max(eo.rest || 0, w);
+      }
+    }
+    flashEdge(ev.from, ev.to, w);
+  }
 }
 
 async function poll() {
@@ -475,6 +498,7 @@ async function poll() {
     if (!bootstrapped) {
       for (const ev of activity) seenAct.add(actKey(ev));
       renderFeed(activity);
+      paintHistory(activity);
       bootstrapped = true;
     } else {
       const fresh = [];
@@ -483,7 +507,7 @@ async function poll() {
         if (seenAct.has(k)) continue;
         seenAct.add(k);
         fresh.push(ev);
-        flashEdge(ev.from, ev.to);
+        flashEdge(ev.from, ev.to, 1.3);
       }
       if (fresh.length) {
         const merged = fresh.concat(activity.filter(ev => !fresh.includes(ev)));
