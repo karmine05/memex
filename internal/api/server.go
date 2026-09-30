@@ -64,7 +64,7 @@ func Routes() []Route {
 		{ID: "agent_inbox", Method: "GET", Mux: "/v1/agents/{id}/inbox", Path: "/v1/agents/{id}/inbox", Audience: "agent", Summary: "DM history for the calling agent"},
 		{ID: "dm", Method: "POST", Mux: "/v1/agents/{id}/dm", Path: "/v1/agents/{id}/dm", Audience: "agent", Summary: "Send a direct note"},
 
-		{ID: "admin_home", Method: "GET", Mux: "/", Path: "/", Audience: "admin", Summary: "Correlation graph of which agent used whose notes"},
+		{ID: "admin_home", Method: "GET", Mux: "/{$}", Path: "/", Audience: "admin", Summary: "Correlation graph of which agent used whose notes"},
 		{ID: "admin_graph", Method: "GET", Mux: "/admin/graph", Path: "/admin/graph", Audience: "admin", Summary: "Correlation graph data"},
 		{ID: "telemetry", Method: "GET", Mux: "/admin/telemetry", Path: "/admin/telemetry", Audience: "admin", Summary: "Keyless read-only aggregates for the dashboard"},
 		{ID: "admin_health", Method: "GET", Mux: "/healthz", Path: "/healthz", Audience: "admin", Summary: "Admin listener health"},
@@ -197,11 +197,13 @@ func (s *Server) wrap(next http.Handler) http.Handler {
 		sw := &statusWriter{ResponseWriter: w, code: http.StatusOK}
 		start := time.Now()
 		next.ServeHTTP(sw, r)
-		if sw.code >= 100 && sw.code < 600 {
+		path := r.URL.Path
+		dash := path == "/" || path == "/healthz" || path == "/metrics" || path == "/admin/telemetry" || path == "/admin/graph"
+		if !dash && sw.code >= 100 && sw.code < 600 {
 			s.status[sw.code].Add(1)
 		}
-		if r.URL.Path != "/healthz" {
-			slog.Info("http", "method", r.Method, "path", r.URL.Path, "status", sw.code, "ms", time.Since(start).Milliseconds())
+		if !dash {
+			slog.Info("http", "method", r.Method, "path", path, "status", sw.code, "ms", time.Since(start).Milliseconds())
 		}
 	})
 }

@@ -3,6 +3,8 @@ package store
 import (
 	"context"
 	"fmt"
+	"sort"
+	"time"
 )
 
 type GraphNode struct {
@@ -147,4 +149,119 @@ func containsSlash(s string) bool {
 		}
 	}
 	return false
+}
+
+// Activity is one named agent event for the admin dashboard.
+type Activity struct {
+	Kind  string `json:"kind"`
+	Actor string `json:"actor"`
+	Other string `json:"other,omitempty"`
+	Space string `json:"space,omitempty"`
+	At    string `json:"at"`
+	From  string `json:"from,omitempty"`
+	To    string `json:"to,omitempty"`
+}
+
+func (s *Store) RecentActivity(ctx context.Context, limit int) ([]Activity, error) {
+	if limit < 1 {
+		limit = 40
+	}
+	if limit > 80 {
+		limit = 80
+	}
+	names := map[string]string{}
+	nr, err := s.Pool.Query(ctx, `SELECT agent_id::text, name FROM agents`)
+	if err != nil {
+		return nil, fmt.Errorf("activity names: %w", err)
+	}
+	for nr.Next() {
+		var id, name string
+		if err := nr.Scan(&id, &name); err != nil {
+			nr.Close()
+			return nil, err
+		}
+		names[id] = name
+	}
+	nr.Close()
+	if err := nr.Err(); err != nil {
+		return nil, err
+	}
+
+	type row struct {
+		kind, actor, other, space, from, to string
+		at                                  time.Time
+	}
+	var raw []row
+
+	writes, err := s.Pool.Query(ctx, `
+		SELECT nv.agent_id::text, a.name, nv.space_id, nv.created_at
+		FROM note_versions nv
+		JOIN agents a ON a.agent_id = nv.agent_id
+		ORDER BY nv.created_at DESC
+		LIMIT $1`, limit)
+	if err != nil {
+		return nil, fmt.Errorf("activity writes: %w", err)
+	}
+	for writes.Next() {
+		var id, name, space string
+		var at time.Time
+		if err := writes.Scan(&id, &name, &space, &at); err != nil {
+			writes.Close()
+			return nil, err
+		}
+		r := row{kind: "wrote", actor: name, space: space, from: id, at: at}
+		if a, b, ok := dmPair(space); ok {
+			r.kind = "sent"
+			if id == a {
+				r.to = b
+			} else {
+				r.to = a
+			}
+			r.other = names[r.to]
+		}
+		raw = append(raw, r)
+	}
+	writes.Close()
+	if err := writes.Err(); err != nil {
+		return nil, err
+	}
+
+	reads, err := s.Pool.Query(ctx, `
+		SELECT r.agent_id::text, ra.name, nv.agent_id::text, wa.name, r.read_at
+		FROM note_reads r
+		JOIN agents ra ON ra.agent_id = r.agent_id
+		JOIN note_versions nv ON nv.note_id = r.note_id AND nv.version = r.version
+		JOIN agents wa ON wa.agent_id = nv.agent_id
+		WHERE r.agent_id <> nv.agent_id
+		ORDER BY r.read_at DESC
+		LIMIT $1`, limit)
+	if err != nil {
+		return nil, fmt.Errorf("activity reads: %w", err)
+	}
+	for reads.Next() {
+		var from, actor, to, other string
+		var at time.Time
+		if err := reads.Scan(&from, &actor, &to, &other, &at); err != nil {
+			reads.Close()
+			return nil, err
+		}
+		raw = append(raw, row{kind: "used", actor: actor, other: other, from: from, to: to, at: at})
+	}
+	reads.Close()
+	if err := reads.Err(); err != nil {
+		return nil, err
+	}
+
+	sort.Slice(raw, func(i, j int) bool { return raw[i].at.After(raw[j].at) })
+	if len(raw) > limit {
+		raw = raw[:limit]
+	}
+	out := make([]Activity, 0, len(raw))
+	for _, r := range raw {
+		out = append(out, Activity{
+			Kind: r.kind, Actor: r.actor, Other: r.other, Space: r.space,
+			At: r.at.UTC().Format(time.RFC3339Nano), From: r.from, To: r.to,
+		})
+	}
+	return out, nil
 }

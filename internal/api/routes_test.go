@@ -38,18 +38,48 @@ func TestAdminRoutesAreAbsentFromAgentListener(t *testing.T) {
 	if rr.Code != http.StatusOK || len(rr.Body.Bytes()) < 100 {
 		t.Fatalf("admin home %d", rr.Code)
 	}
-	// telemetry is keyless on the admin listener
 	req = httptest.NewRequest(http.MethodGet, "/admin/telemetry", nil)
 	rr = httptest.NewRecorder()
 	admin.ServeHTTP(rr, req)
-	if rr.Code != http.StatusServiceUnavailable { // nil store → db down, not 500/401
+	if rr.Code != http.StatusServiceUnavailable {
 		t.Fatalf("telemetry status %d: %s", rr.Code, rr.Body.String())
 	}
-	// and absent from the agent listener
 	req = httptest.NewRequest(http.MethodGet, "/admin/telemetry", nil)
 	rr = httptest.NewRecorder()
 	s.Handler("agent").ServeHTTP(rr, req)
 	if rr.Code != http.StatusNotFound {
 		t.Fatalf("agent telemetry status %d", rr.Code)
+	}
+}
+
+func TestAdminHomeIsNotACatchAll(t *testing.T) {
+	s := &Server{Cfg: config.Default(), Limit: NewLimiter()}
+	admin := s.Handler("admin")
+
+	home := httptest.NewRequest(http.MethodGet, "/", nil)
+	rr := httptest.NewRecorder()
+	admin.ServeHTTP(rr, home)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("admin home %d", rr.Code)
+	}
+	if ct := rr.Header().Get("Content-Type"); ct != "text/html; charset=utf-8" {
+		t.Fatalf("admin home content-type %q", ct)
+	}
+
+	met := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	rr = httptest.NewRecorder()
+	admin.ServeHTTP(rr, met)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("metrics %d", rr.Code)
+	}
+	if ct := rr.Header().Get("Content-Type"); ct != "text/plain; version=0.0.4" {
+		t.Fatalf("metrics content-type %q body %q", ct, rr.Body.String())
+	}
+
+	bogus := httptest.NewRequest(http.MethodGet, "/admin/metrics", nil)
+	rr = httptest.NewRecorder()
+	admin.ServeHTTP(rr, bogus)
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("unknown admin path %d body %s", rr.Code, rr.Body.String())
 	}
 }

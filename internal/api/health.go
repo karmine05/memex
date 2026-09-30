@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"memex/internal/config"
+	"memex/internal/store"
 )
 
 type healthBody struct {
@@ -79,10 +80,19 @@ func (s *Server) telemetry(w http.ResponseWriter, r *http.Request) {
 	for _, a := range agents {
 		out = append(out, agentView(a))
 	}
+	act, err := s.Store.RecentActivity(ctx, 40)
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	if act == nil {
+		act = []store.Activity{}
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"health": s.healthInfo(ctx),
-		"stats":  st,
-		"agents": out,
+		"health":   s.healthInfo(ctx),
+		"stats":    st,
+		"agents":   out,
+		"activity": act,
 	})
 }
 
