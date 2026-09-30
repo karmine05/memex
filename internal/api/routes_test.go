@@ -38,4 +38,18 @@ func TestAdminRoutesAreAbsentFromAgentListener(t *testing.T) {
 	if rr.Code != http.StatusOK || len(rr.Body.Bytes()) < 100 {
 		t.Fatalf("admin home %d", rr.Code)
 	}
+	// telemetry is keyless on the admin listener
+	req = httptest.NewRequest(http.MethodGet, "/admin/telemetry", nil)
+	rr = httptest.NewRecorder()
+	admin.ServeHTTP(rr, req)
+	if rr.Code != http.StatusServiceUnavailable { // nil store → db down, not 500/401
+		t.Fatalf("telemetry status %d: %s", rr.Code, rr.Body.String())
+	}
+	// and absent from the agent listener
+	req = httptest.NewRequest(http.MethodGet, "/admin/telemetry", nil)
+	rr = httptest.NewRecorder()
+	s.Handler("agent").ServeHTTP(rr, req)
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("agent telemetry status %d", rr.Code)
+	}
 }

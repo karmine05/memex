@@ -3,106 +3,540 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>memex agents</title>
+<title>memex · live telemetry</title>
 <style>
   :root { color-scheme: dark; }
-  body { margin: 0; background: #12141a; color: #e7e3d8; font: 15px/1.4 ui-sans-serif, system-ui, sans-serif; }
-  header { padding: 16px 20px 0; }
-  h1 { font-size: 20px; font-weight: 600; margin: 0 0 6px; }
-  p { margin: 0; color: #b7b1a4; max-width: 62rem; }
-  #stage { width: 100%; height: calc(100vh - 92px); display: block; }
-  .legend { display: flex; gap: 16px; padding: 8px 20px 0; color: #b7b1a4; }
-  .swatch { display: inline-block; width: 18px; height: 3px; margin-right: 6px; vertical-align: middle; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; overflow: hidden; background: #04060c; color: #dfe6f3;
+    font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  #bg {
+    position: fixed; inset: 0; z-index: 0;
+    background:
+      radial-gradient(1200px 700px at 68% 18%, rgba(46, 108, 219, .14), transparent 60%),
+      radial-gradient(900px 600px at 22% 82%, rgba(190, 35, 74, .10), transparent 60%),
+      radial-gradient(circle at 50% 50%, #070b16 0%, #04060c 70%);
+  }
+  #c { position: fixed; inset: 0; z-index: 1; display: block; cursor: grab; }
+  #c:active { cursor: grabbing; }
+  .panel {
+    position: fixed; z-index: 3; background: rgba(9, 13, 24, .78);
+    border: 1px solid rgba(120, 150, 220, .22); border-radius: 10px;
+    backdrop-filter: blur(8px);
+  }
+  #top {
+    top: 14px; left: 14px; right: 262px; display: flex; align-items: center;
+    gap: 14px; padding: 10px 16px;
+  }
+  #top .logo { font-size: 16px; letter-spacing: .18em; font-weight: 700; color: #fff; }
+  #top .logo em { font-style: normal; color: #5ea1ff; }
+  #top .sub { color: #7b87a3; font-size: 11px; }
+  .chip {
+    margin-left: auto; display: flex; gap: 10px; align-items: center;
+    font-size: 11px; white-space: nowrap;
+  }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    margin-right: 5px; background: #444; }
+  .ok   { color: #43e08a; } .ok .dot   { background: #43e08a; box-shadow: 0 0 8px #43e08a88; }
+  .bad  { color: #ff5d6c; } .bad .dot  { background: #ff5d6c; box-shadow: 0 0 8px #ff5d6c88; }
+  .warn { color: #ffc857; } .warn .dot { background: #ffc857; box-shadow: 0 0 8px #ffc85788; }
+  #feed {
+    top: 76px; right: 14px; width: 236px; bottom: 190px; padding: 10px 12px;
+    display: flex; flex-direction: column;
+  }
+  #feed h3, #agents h3 {
+    margin: 0 0 8px; font-size: 10px; letter-spacing: .22em; color: #8fa3c8;
+    font-weight: 600;
+  }
+  #feedlist { overflow: hidden; flex: 1; display: flex; flex-direction: column; gap: 4px; }
+  .ev { font-size: 11px; color: #b9c6de; border-left: 2px solid #3b6fd4; padding-left: 7px; }
+  .ev.r { border-color: #5ea1ff; }
+  .ev.n { border-color: #b46bff; }
+  .ev.s { border-color: #ffc857; }
+  .ev .t { color: #66738f; margin-right: 6px; font-size: 10px; }
+  #spark { left: 14px; bottom: 14px; padding: 10px 14px; width: 248px; }
+  #spark .row { display: flex; gap: 16px; font-size: 10px; color: #8fa3c8; align-items: center; }
+  #spark svg { display: block; }
+  #agents { left: 14px; top: 76px; width: 250px; padding: 10px 12px; max-height: 320px; overflow: hidden; }
+  .ag { display: flex; gap: 8px; align-items: baseline; font-size: 11px; padding: 2px 0; }
+  .ag .nm { color: #dfe6f3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ag .tm { margin-left: auto; color: #66738f; font-size: 10px; white-space: nowrap; }
+  #legend { left: 14px; bottom: 106px; padding: 8px 12px; font-size: 10px; color: #8fa3c8; }
+  #legend .sw { display: inline-block; width: 16px; height: 2px; vertical-align: middle; margin-right: 6px; }
+  #hint { position: fixed; z-index: 3; right: 14px; bottom: 16px; color: #5c6a8a; font-size: 10px; }
+  #lost {
+    position: fixed; z-index: 5; top: 0; left: 0; right: 0; display: none;
+    background: #3b1220; color: #ffb3bd; text-align: center;
+    padding: 6px; font-size: 12px;
+  }
 </style>
 </head>
 <body>
-<header>
-  <h1>Who used whose notes</h1>
-  <p>This admin port is not a set of web pages. JSON routes such as /healthz and /admin/agents still exist for memexctl. This graph is the one view. It stays on this Mac.</p>
-</header>
-<div class="legend">
-  <span><i class="swatch" style="background:#7eb6ff"></i>used their note</span>
-  <span><i class="swatch" style="background:#e2b15a"></i>sent a message</span>
-  <span><i class="swatch" style="background:#8fce8f"></i>cited their note</span>
-</div>
-<svg id="stage"></svg>
-<script>
-const colors = { used: "#7eb6ff", sent: "#e2b15a", cited: "#8fce8f" };
-const labels = { used: "used", sent: "sent", cited: "cited" };
+<div id="bg"></div>
+<canvas id="c"></canvas>
+<div id="lost">connection lost — reconnecting…</div>
 
-async function main() {
-  const res = await fetch("/admin/graph");
-  const data = await res.json();
-  const svg = document.getElementById("stage");
-  const w = svg.clientWidth || 900;
-  const h = svg.clientHeight || 640;
-  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
-  const ns = "http://www.w3.org/2000/svg";
-  if (!data.nodes.length) {
-    const t = document.createElementNS(ns, "text");
-    t.setAttribute("x", 24); t.setAttribute("y", 40); t.setAttribute("fill", "#b7b1a4");
-    t.textContent = "No agents yet. Create one with memexctl admin create-agent-key.";
-    svg.appendChild(t);
-    return;
-  }
-  const cx = w / 2, cy = h / 2, r = Math.min(w, h) * 0.34;
-  data.nodes.forEach((n, i) => {
-    const a = (Math.PI * 2 * i) / data.nodes.length - Math.PI / 2;
-    n.x = cx + r * Math.cos(a);
-    n.y = cy + r * Math.sin(a);
+<div id="top" class="panel">
+  <span class="logo">MEM<em>EX</em></span>
+  <span class="sub">agent neural network · live telemetry</span>
+  <span class="chip">
+    <span id="ch-db" class="warn"><span class="dot"></span>db …</span>
+    <span id="ch-emb" class="warn"><span class="dot"></span>embedder …</span>
+    <span id="ch-sse" class="warn"><span class="dot"></span>streams …</span>
+  </span>
+</div>
+
+<div id="agents" class="panel"><h3>AGENTS</h3><div id="agentlist"></div></div>
+<div id="feed" class="panel"><h3>ACTIVITY</h3><div id="feedlist"></div></div>
+<div id="legend" class="panel">
+  <div><span class="sw" style="background:#5ea1ff"></span>used a note</div>
+  <div><span class="sw" style="background:#ffc857"></span>sent a DM</div>
+  <div><span class="sw" style="background:#43e08a"></span>cited a note</div>
+</div>
+<div id="spark" class="panel">
+  <div class="row"><span>requests per poll · last 60</span></div>
+  <svg id="sp1" width="220" height="34" style="margin-top:4px"></svg>
+  <svg id="sp2" width="220" height="34" style="margin-top:4px"></svg>
+  <div class="row"><span style="color:#5ea1ff">— 2xx</span><span style="color:#ff5d6c">— 4xx / 5xx</span></div>
+</div>
+<div id="hint">drag to orbit · scroll to zoom · polls every 2 s</div>
+
+<script id="vs-node" type="x-shader/x-vertex">
+attribute vec3 aP; attribute float aS; attribute vec3 aC;
+uniform mat4 uV, uP; uniform float uT;
+varying vec3 vC; varying float vA;
+void main() {
+  float pu = 0.72 + 0.28 * sin(uT * 1.8 + aP.x * 2.3 + aP.y * 1.7);
+  vec4 mv = uV * vec4(aP, 1.0);
+  gl_Position = uP * mv;
+  gl_PointSize = aS * pu * (240.0 / max(1.0, -mv.z));
+  vC = aC; vA = pu;
+}
+</script>
+<script id="fs-node" type="x-shader/x-fragment">
+precision mediump float; varying vec3 vC; varying float vA;
+void main() {
+  vec2 q = gl_PointCoord - 0.5;
+  float d = length(q) * 2.0;
+  float a = exp(-d * d * 3.5);
+  gl_FragColor = vec4(vC * (0.8 + 0.6 * vA) + vec3(0.25) * a, a);
+}
+</script>
+<script id="vs-line" type="x-shader/x-vertex">
+attribute vec3 aA; attribute vec3 aB; attribute float aF;
+uniform mat4 uV, uP;
+varying vec3 vM; varying float vF;
+void main() {
+  vec3 p = (gl_VertexID == 0) ? aA : aB;
+  gl_Position = uP * uV * vec4(p, 1.0);
+  vM = mix(aA, aB, 0.5); vF = aF;
+}
+</script>
+<script id="fs-line" type="x-shader/x-fragment">
+precision mediump float;
+uniform float uT;
+varying vec3 vM; varying float vF;
+void main() {
+  float seed = fract(sin(dot(vM, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+  float k = (vF * 11.0) + 1.0;
+  float ph = fract(uT * (0.22 + vF * 0.25) + seed);
+  float pulse = pow(ph, 14.0) * k;
+  float a = 0.05 + min(pulse, 1.6);
+  vec3 c = mix(vec3(0.32, 0.52, 0.95), vec3(1.0), min(pulse * 0.6, 1.0));
+  gl_FragColor = vec4(c, a);
+}
+</script>
+<script id="vs-star" type="x-shader/x-vertex">
+attribute vec3 aP; attribute float aS;
+uniform mat4 uV, uP;
+void main() {
+  vec4 mv = uV * vec4(aP, 1.0);
+  gl_Position = uP * mv;
+  gl_PointSize = aS * (240.0 / max(1.0, -mv.z));
+}
+</script>
+<script id="fs-star" type="x-shader/x-fragment">
+precision mediump float;
+void main() {
+  vec2 q = gl_PointCoord - 0.5;
+  float d = length(q) * 2.0;
+  float a = exp(-d * d * 4.0) * 0.7;
+  gl_FragColor = vec4(0.45, 0.55, 0.75, a);
+}
+</script>
+<script>
+"use strict";
+const cv = document.getElementById('c');
+const gl = cv.getContext('webgl', { alpha: true, antialias: true });
+let TWO_D = !gl;
+let ctx2 = null;
+if (!gl) ctx2 = cv.getContext('2d');
+let W = 0, H = 0;
+function resize() {
+  W = cv.width = innerWidth * devicePixelRatio;
+  H = cv.height = innerHeight * devicePixelRatio;
+  cv.style.width = innerWidth + 'px'; cv.style.height = innerHeight + 'px';
+  if (gl) gl.viewport(0, 0, W, H);
+}
+addEventListener('resize', resize); resize();
+
+function shader(type, id) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, document.getElementById(id).textContent);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+  return s;
+}
+function prog(vs, fs) {
+  const p = gl.createProgram();
+  gl.attachShader(p, shader(gl.VERTEX_SHADER, vs));
+  gl.attachShader(p, shader(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  return p;
+}
+const nodeBuf = gl ? gl.createBuffer() : null, lineBuf = gl ? gl.createBuffer() : null, starBuf = gl ? gl.createBuffer() : null;
+let pN = null, pL = null, pS = null, aP = 0, aS = 0, aC = 0, aA = 0, aB = 0, aF = 0, spP = 0, spS = 0;
+if (gl) {
+  pN = prog('vs-node', 'fs-node'); pL = prog('vs-line', 'fs-line'); pS = prog('vs-star', 'fs-star');
+  aP = gl.getAttribLocation(pN, 'aP'); aS = gl.getAttribLocation(pN, 'aS'); aC = gl.getAttribLocation(pN, 'aC');
+  aA = gl.getAttribLocation(pL, 'aA'); aB = gl.getAttribLocation(pL, 'aB'); aF = gl.getAttribLocation(pL, 'aF');
+  spP = gl.getAttribLocation(pS, 'aP'); spS = gl.getAttribLocation(pS, 'aS');
+}
+
+function rand(n) { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+function hash(str) { let h = 0; for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0; return Math.abs(h); }
+
+// ---- scene state (from server) ----
+let nodes = [], edges = [];
+let nodePos = new Map();
+let edgeCount = 0;
+
+function layout() {
+  const n = nodes.length;
+  nodePos = new Map();
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  nodes.forEach((nd, i) => {
+    const y = n === 1 ? 0 : 1 - (i / (n - 1)) * 2;
+    const r = Math.sqrt(Math.max(0, 1 - y * y));
+    const th = golden * i + rand(i) * 0.5;
+    const rad = 9 + rand(i + 40) * 3.5;
+    nodePos.set(nd.id, [Math.cos(th) * r * rad, y * 8 * (0.8 + rand(i + 80) * 0.4), Math.sin(th) * r * rad]);
   });
-  const byID = Object.fromEntries(data.nodes.map(n => [n.id, n]));
-  const pairCount = {};
-  for (const e of data.edges) {
-    const k = e.from + ">" + e.to;
-    pairCount[k] = (pairCount[k] || 0) + 1;
+}
+
+function upload() {
+  if (!gl) return;
+  const np = [];
+  for (const nd of nodes) {
+    const p = nodePos.get(nd.id) || [0, 0, 0];
+    const active = nd.status === 'active';
+    let c;
+    if (active) {
+      const b = rand(hash(nd.id) % 97) * 0.5;
+      c = b < 0.3 ? [0.30 + b, 0.55, 0.95] : [0.85, 0.35, 0.55];
+    } else c = [0.4, 0.45, 0.55];
+    const s = active ? 3.2 + rand((hash(nd.id) % 89) + 3) * 1.6 : 1.6;
+    np.push(p[0], p[1], p[2], s, c[0], c[1], c[2]);
   }
-  const seen = {};
-  for (const e of data.edges) {
-    const a = byID[e.from], b = byID[e.to];
+  gl.bindBuffer(gl.ARRAY_BUFFER, nodeBuf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(np), gl.DYNAMIC_DRAW);
+
+  const lp = [];
+  edgeCount = 0;
+  for (const e of edges) {
+    const a = nodePos.get(e.from), b = nodePos.get(e.to);
     if (!a || !b) continue;
-    const k = e.from + ">" + e.to;
-    const slot = seen[k] || 0;
-    seen[k] = slot + 1;
-    const total = pairCount[k];
-    const dx = b.x - a.x, dy = b.y - a.y;
-    const len = Math.hypot(dx, dy) || 1;
-    const ox = (-dy / len) * (slot - (total - 1) / 2) * 16;
-    const oy = (dx / len) * (slot - (total - 1) / 2) * 16;
-    const path = document.createElementNS(ns, "path");
-    const mx = (a.x + b.x) / 2 + ox * 3, my = (a.y + b.y) / 2 + oy * 3;
-    path.setAttribute("d", `M ${a.x} ${a.y} Q ${mx} ${my} ${b.x} ${b.y}`);
-    path.setAttribute("fill", "none");
-    path.setAttribute("stroke", colors[e.kind] || "#aaa");
-    path.setAttribute("stroke-width", "2");
-    svg.appendChild(path);
-    const label = document.createElementNS(ns, "text");
-    label.setAttribute("x", mx); label.setAttribute("y", my - 6);
-    label.setAttribute("fill", colors[e.kind] || "#aaa");
-    label.setAttribute("font-size", "12");
-    label.setAttribute("text-anchor", "middle");
-    label.textContent = `${labels[e.kind] || e.kind} ${e.count}`;
-    svg.appendChild(label);
+    edgeCount++;
+    const f = Math.min(e.count / 20, 1);
+    lp.push(a[0], a[1], a[2], b[0], b[1], b[2], f);
+    lp.push(b[0], b[1], b[2], a[0], a[1], a[2], f);
   }
-  for (const n of data.nodes) {
-    const c = document.createElementNS(ns, "circle");
-    c.setAttribute("cx", n.x); c.setAttribute("cy", n.y); c.setAttribute("r", "22");
-    c.setAttribute("fill", "#1d2230"); c.setAttribute("stroke", "#e7e3d8");
-    svg.appendChild(c);
-    const t = document.createElementNS(ns, "text");
-    t.setAttribute("x", n.x); t.setAttribute("y", n.y + 40);
-    t.setAttribute("fill", "#e7e3d8"); t.setAttribute("text-anchor", "middle");
-    t.textContent = n.name;
-    svg.appendChild(t);
+  gl.bindBuffer(gl.ARRAY_BUFFER, lineBuf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lp), gl.DYNAMIC_DRAW);
+}
+
+// starfield (static)
+const stars = new Float32Array(260 * 4);
+for (let i = 0; i < 260; i++) {
+  const u = rand(i + 900) * 2 - 1, ph = rand(i + 700) * Math.PI * 2;
+  const r = 60 + rand(i + 500) * 60, s = Math.sqrt(1 - u * u);
+  stars.set([r * s * Math.cos(ph), r * u, r * s * Math.sin(ph), 0.5 + rand(i) * 1.1], i * 4);
+}
+if (gl) {
+  gl.bindBuffer(gl.ARRAY_BUFFER, starBuf);
+  gl.bufferData(gl.ARRAY_BUFFER, stars, gl.STATIC_DRAW);
+}
+
+// camera
+let camT = { az: 0.6, el: 0.22, r: 26 }, cam = { ...camT };
+let dragging = false, lx = 0, ly = 0;
+cv.addEventListener('mousedown', e => { dragging = true; lx = e.clientX; ly = e.clientY; });
+addEventListener('mouseup', () => dragging = false);
+addEventListener('mousemove', e => {
+  if (!dragging) return;
+  camT.az -= (e.clientX - lx) * 0.005;
+  camT.el = Math.max(-1.4, Math.min(1.4, camT.el + (e.clientY - ly) * 0.005));
+  lx = e.clientX; ly = e.clientY;
+});
+addEventListener('wheel', e => {
+  camT.r = Math.max(10, Math.min(60, camT.r + e.deltaY * 0.02));
+}, { passive: true });
+
+function m4persp(out, fovy, asp, n, f) {
+  const t = 1 / Math.tan(fovy / 2);
+  out.fill(0);
+  out[0] = t / asp; out[5] = t; out[10] = (f + n) / (n - f); out[11] = -1; out[14] = 2 * f * n / (n - f);
+  return out;
+}
+function m4lookAt(out, ex, ey, ez, tx, ty, tz) {
+  let zx = ex - tx, zy = ey - ty, zz = ez - tz;
+  let l = Math.hypot(zx, zy, zz) || 1; zx /= l; zy /= l; zz /= l;
+  let xx = zz, xy = 0, xz = -zx;
+  l = Math.hypot(xx, xy, xz) || 1; xx /= l; xy /= l; xz /= l;
+  const yx = zy * xz - zz * xy, yy = zz * xx - zx * xz, yz = zx * xy - zy * xx;
+  out[0] = xx; out[1] = yx; out[2] = zx; out[3] = 0;
+  out[4] = xy; out[5] = yy; out[6] = zy; out[7] = 0;
+  out[8] = xz; out[9] = yz; out[10] = zz; out[11] = 0;
+  out[12] = -(xx * ex + xy * ey + xz * ez);
+  out[13] = -(yx * ex + yy * ey + yz * ez);
+  out[14] = -(zx * ex + zy * ey + zz * ez);
+  out[15] = 1;
+  return out;
+}
+
+let uV = null, uP = null, uT = null;
+if (gl) {
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE);   // additive glow
+  uV = {}; uP = {}; uT = {};
+  for (const p of [pN, pL, pS]) { uV[p] = gl.getUniformLocation(p, 'uV'); uP[p] = gl.getUniformLocation(p, 'uP'); uT[p] = gl.getUniformLocation(p, 'uT'); }
+}
+const t0 = performance.now();
+
+function frame() {
+  const t = (performance.now() - t0) / 1000;
+  if (!dragging) camT.az += 0.0011;
+  for (const k of ['az', 'el', 'r']) cam[k] += (camT[k] - cam[k]) * 0.08;
+  if (TWO_D) { frame2D(t); requestAnimationFrame(frame); return; }
+  const ex = cam.r * Math.cos(cam.el) * Math.cos(cam.az);
+  const ey = cam.r * Math.sin(cam.el);
+  const ez = cam.r * Math.cos(cam.el) * Math.sin(cam.az);
+  const V = m4lookAt(new Float32Array(16), ex, ey, ez, 0, 0, 0);
+  const P = m4persp(new Float32Array(16), 0.8, W / H, 0.1, 400);
+
+  gl.clearColor(0, 0, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  // stars
+  gl.useProgram(pS);
+  gl.uniformMatrix4fv(uV[pS], false, V); gl.uniformMatrix4fv(uP[pS], false, P);
+  gl.bindBuffer(gl.ARRAY_BUFFER, starBuf);
+  gl.enableVertexAttribArray(spP); gl.vertexAttribPointer(spP, 3, gl.FLOAT, false, 16, 0);
+  gl.enableVertexAttribArray(spS); gl.vertexAttribPointer(spS, 1, gl.FLOAT, false, 16, 12);
+  gl.drawArrays(gl.POINTS, 0, 260);
+
+  // synapse edges
+  if (edgeCount > 0) {
+    gl.useProgram(pL);
+    gl.uniformMatrix4fv(uV[pL], false, V); gl.uniformMatrix4fv(uP[pL], false, P); gl.uniform1f(uT[pL], t);
+    gl.bindBuffer(gl.ARRAY_BUFFER, lineBuf);
+    gl.enableVertexAttribArray(aA); gl.vertexAttribPointer(aA, 3, gl.FLOAT, false, 56, 0);
+    gl.enableVertexAttribArray(aB); gl.vertexAttribPointer(aB, 3, gl.FLOAT, false, 56, 12);
+    gl.enableVertexAttribArray(aF); gl.vertexAttribPointer(aF, 1, gl.FLOAT, false, 56, 24);
+    gl.drawArrays(gl.LINES, 0, edgeCount * 2);
+    gl.disableVertexAttribArray(aB); gl.disableVertexAttribArray(aF);
   }
-  if (!data.edges.length) {
-    const t = document.createElementNS(ns, "text");
-    t.setAttribute("x", 24); t.setAttribute("y", h - 24); t.setAttribute("fill", "#b7b1a4");
-    t.textContent = "No cross-agent use yet. An edge appears when one agent reads, messages, or cites another.";
-    svg.appendChild(t);
+
+  // neurons
+  gl.useProgram(pN);
+  gl.uniformMatrix4fv(uV[pN], false, V); gl.uniformMatrix4fv(uP[pN], false, P); gl.uniform1f(uT[pN], t);
+  gl.bindBuffer(gl.ARRAY_BUFFER, nodeBuf);
+  gl.enableVertexAttribArray(aP); gl.vertexAttribPointer(aP, 3, gl.FLOAT, false, 28, 0);
+  gl.enableVertexAttribArray(aS); gl.vertexAttribPointer(aS, 1, gl.FLOAT, false, 28, 12);
+  gl.enableVertexAttribArray(aC); gl.vertexAttribPointer(aC, 3, gl.FLOAT, false, 28, 16);
+  gl.drawArrays(gl.POINTS, 0, nodes.length);
+
+  requestAnimationFrame(frame);
+}
+
+// ---------------- 2D fallback (no WebGL) ----------------
+function project2D(x, y, z) {
+  // orbit camera → simple perspective projection
+  const ca = Math.cos(cam.az), sa = Math.sin(cam.az), ce = Math.cos(cam.el), se = Math.sin(cam.el);
+  const x1 = x * ca - z * sa, z1 = x * sa + z * ca;
+  const y1 = y * ce - z1 * se, z2 = y * se + z1 * ce;
+  const d = cam.r + z2;
+  const f = Math.min(W, H) / 16;
+  return [W / 2 + (x1 * f) / d, H / 2 + (y1 * f) / d, d];
+}
+function frame2D(t) {
+  ctx2.clearRect(0, 0, W, H);
+  for (let i = 0; i < 260; i++) {
+    const [sx, sy, sz, ss] = [stars[i*4], stars[i*4+1], stars[i*4+2], stars[i*4+3]];
+    const [px, py, d] = project2D(sx, sy, sz);
+    if (d < 1) continue;
+    const a = Math.max(0, 0.5 - d / 200);
+    ctx2.globalAlpha = a;
+    ctx2.fillStyle = '#8aa2c8';
+    const r = Math.max(0.4, ss * 0.5 * (26 / d));
+    ctx2.fillRect(px, py, r, r);
+  }
+  ctx2.globalAlpha = 1;
+
+  const edgeList = [];
+  for (const e of edges) {
+    const a = nodePos.get(e.from), b = nodePos.get(e.to);
+    if (!a || !b) continue;
+    edgeList.push([a, b, Math.min(e.count / 20, 1)]);
+  }
+  ctx2.lineWidth = 1;
+  for (const [a, b, f] of edgeList) {
+    const [ax, ay, ad] = project2D(a[0], a[1], a[2]);
+    const [bx, by, bd] = project2D(b[0], b[1], b[2]);
+    const alpha = Math.max(0.04, 0.10 - Math.max(ad, bd) / 400);
+    ctx2.strokeStyle = 'rgba(110,150,230,' + alpha.toFixed(3) + ')';
+    ctx2.beginPath(); ctx2.moveTo(ax, ay); ctx2.lineTo(bx, by); ctx2.stroke();
+    const seed = (Math.sin(ax * 12.9898 + by * 78.233) * 43758.5453) % 1;
+    const ph = (t * (0.25 + f * 0.3) + Math.abs(seed)) % 1;
+    const px = ax + (bx - ax) * ph, py = ay + (by - ay) * ph;
+    const pa = Math.max(0, (1 - ph * 0.5)) * (0.25 + f * 0.75);
+    ctx2.fillStyle = 'rgba(190,215,255,' + pa.toFixed(3) + ')';
+    ctx2.beginPath(); ctx2.arc(px, py, 1.6 + f * 2, 0, 7); ctx2.fill();
+  }
+
+  for (const nd of nodes) {
+    const p = nodePos.get(nd.id) || [0, 0, 0];
+    const [px, py, d] = project2D(p[0], p[1], p[2]);
+    if (d < 1) continue;
+    const pulse = 0.72 + 0.28 * Math.sin(t * 1.8 + p[0] * 2.3 + p[1] * 1.7);
+    const active = nd.status === 'active';
+    const base = active
+      ? (rand(hash(nd.id) % 97) * 0.5 < 0.3 ? '70,140,255' : '230,90,140')
+      : '110,120,140';
+    const size = Math.max(1.2, (active ? 5 : 2.4) * pulse * (26 / d));
+    const g = ctx2.createRadialGradient(px, py, 0, px, py, size * 3);
+    g.addColorStop(0, 'rgba(' + base + ',' + (active ? 0.9 : 0.4) + ')');
+    g.addColorStop(0.4, 'rgba(' + base + ',' + (active ? 0.35 : 0.15) + ')');
+    g.addColorStop(1, 'rgba(' + base + ',0)');
+    ctx2.fillStyle = g;
+    ctx2.beginPath(); ctx2.arc(px, py, size * 3, 0, 7); ctx2.fill();
   }
 }
-main();
+
+requestAnimationFrame(frame);
+
+// ---------------- telemetry ----------------
+const $ = id => document.getElementById(id);
+let prev = null, lastHttp = {};
+let hist = { a: [], b: [] };
+const MAXH = 60;
+let lostShown = false, prevAgentIds = '';
+let lastDelta = { two: 0, bad: 0 };
+
+function setChip(id, cls, label) {
+  const el = $(id);
+  el.className = cls;
+  el.innerHTML = '<span class="dot"></span>' + label;
+}
+
+function spark(svg, data, color) {
+  const n = data.length;
+  if (n < 2) { svg.innerHTML = ''; return; }
+  const mx = Math.max(1, ...data);
+  const pts = data.map((v, i) => (i / (n - 1) * 220).toFixed(1) + ',' + (32 - v / mx * 28).toFixed(1)).join(' ');
+  svg.innerHTML = '<polyline points="' + pts + '" fill="none" stroke="' + color + '" stroke-width="1.5"/>';
+}
+
+function relTime(iso) {
+  if (!iso) return 'never';
+  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return Math.floor(s) + 's ago';
+  if (s < 3600) return Math.floor(s / 60) + 'm ago';
+  if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+  return Math.floor(s / 86400) + 'd ago';
+}
+
+function feed(cls, msg) {
+  const el = document.createElement('div');
+  el.className = 'ev ' + cls;
+  const now = new Date();
+  const hh = [now.getHours(), now.getMinutes(), now.getSeconds()].map(x => String(x).padStart(2, '0')).join(':');
+  el.innerHTML = '<span class="t">' + hh + '</span>' + msg;
+  const list = $('feedlist');
+  list.prepend(el);
+  while (list.children.length > 40) list.lastChild.remove();
+}
+
+function parseMetrics(text) {
+  const out = {};
+  for (const line of text.split('\n')) {
+    const m = line.match(/^memex_http_responses_total\{code="(\d+)"\} (\d+)/);
+    if (m) out[m[1]] = +m[2];
+  }
+  return out;
+}
+
+async function poll() {
+  try {
+    const [tz, met, gr] = await Promise.all([
+      fetch('/admin/telemetry').then(r => r.json()),
+      fetch('/metrics').then(r => r.text()),
+      fetch('/admin/graph').then(r => r.json()),
+    ]);
+    const hz = tz.health, st = tz.stats, ag = tz.agents;
+    $('lost').style.display = 'none'; lostShown = false;
+
+    setChip('ch-db', hz.db === 'ok' ? 'ok' : 'bad', 'db ' + hz.db);
+    setChip('ch-emb', hz.embedder === 'ok' ? 'ok' : 'warn', 'embedder ' + hz.embedder);
+    setChip('ch-sse', 'ok', 'streams ' + hz.streams);
+
+    nodes = gr.nodes || []; edges = gr.edges || [];
+    const ids = nodes.map(x => x.id).sort().join(',');
+    if (ids !== prevAgentIds) {
+      layout();
+      if (prevAgentIds !== '') feed('n', 'topology changed · ' + nodes.length + ' agents, ' + edges.length + ' links');
+      prevAgentIds = ids;
+    }
+    upload();
+
+    $('agentlist').innerHTML = ag.map(a =>
+      '<div class="ag"><span class="dot ' + (a.status === 'active' ? 'ok' : 'warn') + '" style="width:6px;height:6px"></span>' +
+      '<span class="nm">' + a.name + '</span><span class="tm">' + relTime(a.last_active) + '</span></div>'
+    ).join('');
+
+    const http = parseMetrics(met);
+    let dTwo = 0, dBad = 0;
+    if (prev) {
+      const dR = st.reads - prev.reads, dV = st.versions - prev.versions, dS = hz.streams - prev.streams;
+      for (const c in http) {
+        const d = http[c] - (lastHttp[c] || 0);
+        if (d > 0) (c[0] === '2' ? (dTwo += d) : (dBad += d));
+      }
+      if (dR > 0) feed('r', '+' + dR + ' note read' + (dR > 1 ? 's' : ''));
+      if (dV > 0) feed('n', '+' + dV + ' new version' + (dV > 1 ? 's' : ''));
+      if (dS > 0) feed('s', '+' + dS + ' SSE subscriber' + (dS > 1 ? 's' : ''));
+      if (dS < 0) feed('s', (-dS) + ' SSE subscriber' + (dS < -1 ? 's' : '') + ' left');
+      if (dTwo || dBad) feed(dTwo >= dBad ? 'r' : 's', dTwo + ' ok · ' + dBad + ' err requests');
+    } else {
+      feed('n', 'telemetry online · ' + st.versions + ' versions, ' + st.reads + ' reads, ' + ag.length + ' agents');
+    }
+    lastDelta = { two: dTwo, bad: dBad };
+    lastHttp = http;
+    prev = { reads: st.reads, versions: st.versions, streams: hz.streams };
+
+    hist.a.push(dTwo); hist.b.push(dBad);
+    if (hist.a.length > MAXH) { hist.a.shift(); hist.b.shift(); }
+    spark($('sp1'), hist.a, '#5ea1ff');
+    spark($('sp2'), hist.b, '#ff5d6c');
+  } catch (e) {
+    if (!lostShown) { $('lost').style.display = 'block'; lostShown = true; }
+  }
+};
+setInterval(poll, 2000);
+poll();
 </script>
 </body>
 </html>

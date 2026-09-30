@@ -68,6 +68,9 @@
     "/admin/stats": {
       "get": {"summary": "Volume for a space or the instance", "responses": {"200": {"description": "ok"}}, "security": [{"bearer": []}]}
     },
+    "/admin/telemetry": {
+      "get": {"summary": "Keyless read-only aggregates for the dashboard", "responses": {"200": {"description": "ok"}}}
+    },
     "/healthz": {
       "get": {"summary": "Process health", "responses": {"200": {"description": "ok"}}},
       "get": {"summary": "Admin listener health", "responses": {"200": {"description": "ok"}}}

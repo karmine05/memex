@@ -20,10 +20,8 @@ type healthBody struct {
 	PendingEmbeds int64  `json:"pending_embeds"`
 }
 
-func (s *Server) health(w http.ResponseWriter, r *http.Request) {
+func (s *Server) healthInfo(ctx context.Context) healthBody {
 	body := healthBody{Status: "ok", Version: config.Version, DB: "ok", Embedder: "ok"}
-	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
-	defer cancel()
 	if s.Store == nil {
 		body.DB = "down"
 	} else if err := s.Store.Pool.Ping(ctx); err != nil {
@@ -40,12 +38,52 @@ func (s *Server) health(w http.ResponseWriter, r *http.Request) {
 	if s.Hub != nil {
 		body.Streams = s.Hub.Subscribers()
 	}
-	code := http.StatusOK
 	if body.DB != "ok" {
 		body.Status = "down"
+	}
+	return body
+}
+
+func (s *Server) health(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+	body := s.healthInfo(ctx)
+	code := http.StatusOK
+	if body.DB != "ok" {
 		code = http.StatusServiceUnavailable
 	}
 	writeJSON(w, code, body)
+}
+
+// telemetry is keyless: read-only aggregates for the admin dashboard, served
+// only on the loopback-bound admin listener (same trust boundary as
+// /admin/graph, /healthz, and /metrics).
+func (s *Server) telemetry(w http.ResponseWriter, r *http.Request) {
+	if s.Store == nil {
+		writeError(w, http.StatusServiceUnavailable, "db down")
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+	st, err := s.Store.Stats(ctx, "")
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	agents, err := s.Store.ListAgents(ctx, "", false)
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	out := make([]agentBody, 0, len(agents))
+	for _, a := range agents {
+		out = append(out, agentView(a))
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"health": s.healthInfo(ctx),
+		"stats":  st,
+		"agents": out,
+	})
 }
 
 func (s *Server) metrics(w http.ResponseWriter, r *http.Request) {
