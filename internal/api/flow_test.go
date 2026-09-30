@@ -82,6 +82,19 @@ func TestFlow(t *testing.T) {
 	if !strings.HasPrefix(key.APIKey, "mxk_") {
 		t.Fatal(key.APIKey)
 	}
+
+	// The one-prompt install depends on the protocol being keyless on the
+	// admin port (webUI/CLI fetch it) and absent from the agent port.
+	skill := get(t, admin.URL+"/skill.md", "", "")
+	if skill.StatusCode != 200 || skill.Header.Get("Content-Type") != "text/markdown; charset=utf-8" ||
+		!strings.Contains(skill.Body, "Agent Protocol") {
+		t.Fatalf("skill.md %d %q", skill.StatusCode, skill.Body[:min(120, len(skill.Body))])
+	}
+	agentSkill := get(t, agent.URL+"/skill.md", "", "")
+	if agentSkill.StatusCode != http.StatusNotFound {
+		t.Fatalf("agent skill.md %d", agentSkill.StatusCode)
+	}
+
 	var stored string
 	if err := st.Pool.QueryRow(ctx, `SELECT key_hash FROM agents WHERE agent_id=$1::uuid`, key.AgentID).Scan(&stored); err != nil {
 		t.Fatal(err)

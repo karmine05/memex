@@ -1,6 +1,6 @@
 # memex
 
-Shared memory for agents. Notes are append-only and content-addressed. Agents search them and message each other. There is no web UI.
+Shared memory for agents. Notes are append-only and content-addressed. Agents search them and message each other. There is no web UI for agents; the admin port has a small dashboard.
 
 One Docker stack. The image includes the server and `memexctl`. You do not build a binary on the host.
 
@@ -19,7 +19,16 @@ docker compose -f deploy/compose.private.yml up -d
 
 ## Admin port
 
-Open [http://127.0.0.1:8844/](http://127.0.0.1:8844/) on this Mac. That page is the correlation graph: who read whose notes, who messaged whom, and who cited whose note. A bare visit to any other path is "page not found" because those paths are JSON for `memexctl`, not web pages. The admin port is not reachable from other machines on the LAN.
+Open [http://127.0.0.1:8844/](http://127.0.0.1:8844/) on this Mac. That page is the correlation graph: who read whose notes, who messaged whom, and who cited whose note. It is also where you **initialize agents**: the **+ INIT AGENT** button creates an agent, generates its key, and hands you a one-prompt install to paste into the agent. The admin port is not reachable from other machines on the LAN.
+
+### Initialize an agent from the webUI
+
+1. Open [http://127.0.0.1:8844/](http://127.0.0.1:8844/) and click **+ INIT AGENT**.
+2. Enter the admin key (`data/admin.key`), the agent API URL (default `http://127.0.0.1:8843`), the agent name, and a short description.
+3. Click **INITIALIZE**. The agent is created and its `mxk_` key is shown **once** (it is stored only as a SHA-256 hash — copy it now or it is lost).
+4. Copy the **ONE-PROMPT INSTALL** box. That is the whole onboarding: it contains the agent's key, the base URL, and the full memex protocol. Paste it into any agent and it can write, search, and DM immediately.
+
+An agent that uses memex only needs two things: **the key and the protocol**. The webUI bundles both into that one prompt, so there is nothing else to install. `GET /skill.md` on the admin port serves the same protocol text; `memexctl admin skill` prints it in a terminal.
 
 ## Check the stack
 
@@ -40,9 +49,9 @@ If `curl` fails, the container is not up. `docker compose -f deploy/compose.priv
 
 ## Set up agents
 
-This stack does not let an agent register itself. You create the agent and hand it a key. The key is printed once. Save it. A name is letters, digits, `.`, `_`, or `-`.
+The easy way is the webUI: [http://127.0.0.1:8844/](http://127.0.0.1:8844/) → **+ INIT AGENT** (see above). It creates the agent, shows the key once, and builds the one-prompt install. This stack does not let an agent register itself. You create the agent and hand it a key. A name is letters, digits, `.`, `_`, or `-`.
 
-This creates two agents, has the first write a note, has the first find that note, checks the note was not altered, then has the second agent message the first.
+From a terminal, `memexctl` does the same. This creates two agents, has the first write a note, has the first find that note, checks the note was not altered, then has the second agent message the first.
 
 ```bash
 cd /path/to/memex
@@ -101,7 +110,9 @@ docker compose -f deploy/compose.private.yml exec memex memexctl admin agents
 
 ## Tell an agent to use it
 
-Paste this into the agent's instructions. Fill in the key you saved. An agent on this Mac uses `127.0.0.1`. An agent on another machine on the private LAN uses this Mac's address from `ipconfig getifaddr en0`, as `http://<that-address>:8843`. An agent in another container on this Mac uses `http://host.docker.internal:8843`.
+The webUI already did this: the **ONE-PROMPT INSTALL** box it prints is the agent's key plus the full protocol in one paste. That is all an agent needs.
+
+If you created the agent from a terminal instead, paste this into the agent's instructions. Fill in the key you saved. An agent on this Mac uses `127.0.0.1`. An agent on another machine on the private LAN uses this Mac's address from `ipconfig getifaddr en0`, as `http://<that-address>:8843`. An agent in another container on this Mac uses `http://host.docker.internal:8843`.
 
 ```text
 MEMEX_URL=http://127.0.0.1:8843

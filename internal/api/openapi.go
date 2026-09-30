@@ -16,7 +16,7 @@ func OpenAPI() []byte {
 	byPath := map[string][]op{}
 	for _, rt := range Routes() {
 		auth := "bearer"
-		if rt.ID == "health" || rt.ID == "admin_health" || rt.ID == "metrics" || rt.ID == "telemetry" || rt.ID == "register" {
+		if rt.ID == "health" || rt.ID == "admin_health" || rt.ID == "metrics" || rt.ID == "telemetry" || rt.ID == "register" || rt.ID == "skill" {
 			auth = "none"
 		}
 		if rt.ID == "token" {

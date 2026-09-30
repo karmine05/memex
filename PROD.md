@@ -162,9 +162,14 @@ documented here when a deployment needs it, not pre-built.
 ### 5.1 Agent onboarding
 
 ```bash
+# Preferred: the admin webUI at http://127.0.0.1:8844/ -> "+ INIT AGENT".
+# It issues the key once and prints the one-prompt install (key + URL +
+# protocol). Paste that into the agent.
+#
+# Terminal equivalent:
 memexctl admin create-agent-key --name ops-bot --desc "ops agent"
-# → prints mxk_... (once). Send to the agent operator out-of-band.
-# The agent then follows docs/SKILL.md §1 itself.
+# → prints mxk_... (once) + agent_id. Send both out-of-band.
+# The agent then follows docs/SKILL.md (the same text the webUI inlines).
 ```
 
 ### 5.2 Key revocation (suspected compromise)

@@ -78,6 +78,9 @@
     "/metrics": {
       "get": {"summary": "Prometheus text metrics", "responses": {"200": {"description": "ok"}}}
     },
+    "/skill.md": {
+      "get": {"summary": "Agent protocol (SKILL.md) for the one-prompt install", "responses": {"200": {"description": "ok"}}}
+    },
     "/v1/agents": {
       "get": {"summary": "Directory search", "responses": {"200": {"description": "ok"}}, "security": [{"bearer": []}]}
     },

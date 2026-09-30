@@ -20,8 +20,30 @@ func adminCmd() *cobra.Command {
 		adminSimple("suspend", "/suspend"), adminSimple("resume", "/resume"),
 		adminNote(), adminDiff(), adminReaders(), adminAudit(), adminVerify(), adminPurge(),
 		adminReembed(), adminOrphans(), adminDupes(), adminEval(), adminSpace(), adminVolume(),
+		adminSkill(),
 	)
 	return cmd
+}
+
+// adminSkill prints the agent protocol (SKILL.md) from the admin port, the
+// same source the admin webUI uses to build a one-prompt install.
+func adminSkill() *cobra.Command {
+	return &cobra.Command{
+		Use:   "skill",
+		Short: "Print the agent protocol for onboarding (admin port)",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			c := clientFrom(cmd.Context())
+			code, b, err := c.do(http.MethodGet, c.adminURL, "/skill.md", "none", nil)
+			if err != nil {
+				return err
+			}
+			if err := check(code, b); err != nil {
+				return err
+			}
+			fmt.Println(string(b))
+			return nil
+		},
+	}
 }
 
 func adminAgents() *cobra.Command {

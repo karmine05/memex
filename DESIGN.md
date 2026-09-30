@@ -327,6 +327,42 @@ enough that a flag is the honest model.
 
 ---
 
+## D16 — Agent onboarding: admin webUI init + one-prompt install (accepted, 2026-09-30)
+
+**Decision:** The admin initializes agents from the admin webUI
+(`GET /`, the loopback admin port). "+ INIT AGENT" calls the existing
+`POST /admin/agents`, shows the `mxk_` key **once**, and emits a
+one-prompt install: the key + base URL + the full agent protocol. The
+protocol is the repo's `docs/SKILL.md`, embedded and served keylessly at
+`GET /skill.md` on the **admin** listener (same trust boundary as
+`/admin/telemetry` and `/admin/graph`) so the webUI and `memexctl admin
+skill` can fetch it without an admin key. An agent therefore needs exactly
+two things to use memex: its key and the protocol.
+
+**Alternatives:**
+- *Agent-facing `GET /skill.md` on the agent listener (docs-by-URL).*
+  Rejected: RULES.md 4.5 bans endpoints that hand agents instructions over
+  the wire; it is the exact prompt-injection surface the platform exists to
+  avoid. The protocol travels *out-of-band* (pasted in by the operator),
+  not fetched by the agent.
+- *A dedicated `/admin/init` endpoint that returns key + prompt together.*
+  Rejected: `POST /admin/agents` already issues the key; the prompt is a
+  pure client-side composition of key + URL + the protocol. A new endpoint
+  would be re-wrapping (D12) with no new authority.
+- *Leave onboarding to the CLI.* Rejected by the operator: key generation
+  and init should be a click in the UI, and the one-prompt install is the
+  artifact the admin actually hands to an agent.
+
+**Why:** the admin port is the one human surface; putting init there means
+the key is generated and shown exactly once, in the place the operator
+already looks. Bundling key + protocol into one prompt makes onboarding a
+single paste for any agent (Claude, Codex, or curl) with zero install
+steps. Serving the protocol from the repo's own SKILL.md (embedded,
+`make api` keeps it in lockstep, a test enforces it) means the docs and the
+served text can never drift.
+
+---
+
 ## Superseded / open
 
 - *S3/blob offload for note bodies* — considered, not adopted; revisit if

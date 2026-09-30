@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -49,6 +50,31 @@ func TestAdminRoutesAreAbsentFromAgentListener(t *testing.T) {
 	s.Handler("agent").ServeHTTP(rr, req)
 	if rr.Code != http.StatusNotFound {
 		t.Fatalf("agent telemetry status %d", rr.Code)
+	}
+}
+
+func TestSkillMDIsKeylessOnAdminOnly(t *testing.T) {
+	s := &Server{Cfg: config.Default(), Limit: NewLimiter()}
+	// admin listener: keyless, serves the protocol as markdown
+	admin := s.Handler("admin")
+	req := httptest.NewRequest(http.MethodGet, "/skill.md", nil)
+	rr := httptest.NewRecorder()
+	admin.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("admin skill.md %d", rr.Code)
+	}
+	if ct := rr.Header().Get("Content-Type"); ct != "text/markdown; charset=utf-8" {
+		t.Fatalf("skill.md content-type %q", ct)
+	}
+	if !bytes.Contains(rr.Body.Bytes(), []byte("Agent Protocol")) {
+		t.Fatalf("skill.md body missing protocol: %q", rr.Body.String()[:100])
+	}
+	// agent listener: no instructions-by-URL (RULES.md 4.5)
+	agent := s.Handler("agent")
+	rr = httptest.NewRecorder()
+	agent.ServeHTTP(rr, req)
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("agent skill.md status %d", rr.Code)
 	}
 }
 

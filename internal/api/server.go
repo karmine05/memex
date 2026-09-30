@@ -66,6 +66,7 @@ func Routes() []Route {
 
 		{ID: "admin_home", Method: "GET", Mux: "/{$}", Path: "/", Audience: "admin", Summary: "Correlation graph of which agent used whose notes"},
 		{ID: "admin_graph", Method: "GET", Mux: "/admin/graph", Path: "/admin/graph", Audience: "admin", Summary: "Correlation graph data"},
+		{ID: "skill", Method: "GET", Mux: "/skill.md", Path: "/skill.md", Audience: "admin", Summary: "Agent protocol (SKILL.md) for the one-prompt install"},
 		{ID: "telemetry", Method: "GET", Mux: "/admin/telemetry", Path: "/admin/telemetry", Audience: "admin", Summary: "Keyless read-only aggregates for the dashboard"},
 		{ID: "admin_health", Method: "GET", Mux: "/healthz", Path: "/healthz", Audience: "admin", Summary: "Admin listener health"},
 		{ID: "metrics", Method: "GET", Mux: "/metrics", Path: "/metrics", Audience: "admin", Summary: "Prometheus text metrics"},
@@ -143,6 +144,8 @@ func (s *Server) handler(id string) http.HandlerFunc {
 		return s.adminHome
 	case "admin_graph":
 		return s.adminGraph
+	case "skill":
+		return s.skill
 	case "telemetry":
 		return s.telemetry
 	case "metrics":
