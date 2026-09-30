@@ -9,67 +9,106 @@
   * { box-sizing: border-box; }
   html, body { height: 100%; }
   body {
-    margin: 0; overflow: hidden; background: #04060c; color: #dfe6f3;
+    margin: 0; overflow: hidden; background: #000; color: #dfe6f3;
     font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
   }
   #bg {
     position: fixed; inset: 0; z-index: 0;
     background:
-      radial-gradient(1200px 700px at 68% 18%, rgba(46, 108, 219, .14), transparent 60%),
-      radial-gradient(900px 600px at 22% 82%, rgba(190, 35, 74, .10), transparent 60%),
-      radial-gradient(circle at 50% 50%, #070b16 0%, #04060c 70%);
+      radial-gradient(900px 600px at 8% 6%, rgba(30, 90, 160, .10), transparent 65%),
+      radial-gradient(900px 600px at 92% 8%, rgba(30, 90, 160, .08), transparent 65%),
+      radial-gradient(900px 600px at 8% 94%, rgba(20, 60, 130, .08), transparent 65%),
+      radial-gradient(900px 600px at 92% 94%, rgba(20, 60, 130, .10), transparent 65%),
+      radial-gradient(1100px 700px at 50% 50%, rgba(10, 22, 46, .25), transparent 70%),
+      #000;
   }
   #c { position: fixed; inset: 0; z-index: 1; display: block; cursor: grab; }
   #c:active { cursor: grabbing; }
+
+  /* ---------- liquid glass panels ---------- */
   .panel {
-    position: fixed; z-index: 3; background: rgba(9, 13, 24, .78);
-    border: 1px solid rgba(120, 150, 220, .22); border-radius: 10px;
-    backdrop-filter: blur(8px);
+    position: fixed; z-index: 3;
+    background:
+      linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.02) 40%, rgba(110,180,255,.06) 100%);
+    border: 1px solid rgba(160, 200, 255, .22);
+    backdrop-filter: blur(18px) saturate(1.5);
+    -webkit-backdrop-filter: blur(18px) saturate(1.5);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.28),
+      inset 0 -1px 0 rgba(255,255,255,.05),
+      inset 1px 0 0 rgba(255,255,255,.06),
+      0 10px 40px rgba(0,0,0,.5);
+    overflow: hidden;
+    animation: morph 16s ease-in-out infinite alternate;
   }
+  .panel::after {
+    content: ''; position: absolute; inset: -45%;
+    background: radial-gradient(42% 34% at 28% 18%, rgba(255,255,255,.13), transparent 70%);
+    animation: sheen 11s ease-in-out infinite alternate;
+    pointer-events: none;
+  }
+  #top    { animation-duration: 18s; animation-delay: -3s; }
+  #agents { animation-duration: 15s; animation-delay: -7s; }
+  #feed   { animation-duration: 17s; animation-delay: -11s; }
+  #legend { animation-duration: 14s; animation-delay: -5s; }
+  #spark  { animation-duration: 19s; animation-delay: -9s; }
+  @keyframes morph {
+    0%   { border-radius: 22px 32px 24px 36px; }
+    33%  { border-radius: 36px 22px 34px 24px; }
+    66%  { border-radius: 26px 38px 22px 30px; }
+    100% { border-radius: 34px 24px 36px 22px; }
+  }
+  @keyframes sheen {
+    from { transform: translate(-14%, -10%) rotate(-6deg); }
+    to   { transform: translate(16%, 12%) rotate(6deg); }
+  }
+
   #top {
     top: 14px; left: 14px; right: 262px; display: flex; align-items: center;
-    gap: 14px; padding: 10px 16px;
+    gap: 14px; padding: 10px 18px;
   }
-  #top .logo { font-size: 16px; letter-spacing: .18em; font-weight: 700; color: #fff; }
-  #top .logo em { font-style: normal; color: #5ea1ff; }
+  #top .logo { font-size: 16px; letter-spacing: .18em; font-weight: 700; color: #fff;
+    text-shadow: 0 0 18px rgba(110,180,255,.6); }
+  #top .logo em { font-style: normal; color: #6fd3ff; }
   #top .sub { color: #7b87a3; font-size: 11px; }
-  .chip {
-    margin-left: auto; display: flex; gap: 10px; align-items: center;
-    font-size: 11px; white-space: nowrap;
-  }
+  .chip { margin-left: auto; display: flex; gap: 12px; align-items: center;
+    font-size: 11px; white-space: nowrap; }
   .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%;
     margin-right: 5px; background: #444; }
-  .ok   { color: #43e08a; } .ok .dot   { background: #43e08a; box-shadow: 0 0 8px #43e08a88; }
-  .bad  { color: #ff5d6c; } .bad .dot  { background: #ff5d6c; box-shadow: 0 0 8px #ff5d6c88; }
-  .warn { color: #ffc857; } .warn .dot { background: #ffc857; box-shadow: 0 0 8px #ffc85788; }
+  .ok   { color: #43e08a; } .ok .dot   { background: #43e08a; box-shadow: 0 0 10px #43e08a99; }
+  .bad  { color: #ff5d6c; } .bad .dot  { background: #ff5d6c; box-shadow: 0 0 10px #ff5d6c99; }
+  .warn { color: #ffc857; } .warn .dot { background: #ffc857; box-shadow: 0 0 10px #ffc85799; }
+
   #feed {
-    top: 76px; right: 14px; width: 236px; bottom: 190px; padding: 10px 12px;
+    top: 76px; right: 14px; width: 238px; bottom: 190px; padding: 10px 12px;
     display: flex; flex-direction: column;
   }
   #feed h3, #agents h3 {
-    margin: 0 0 8px; font-size: 10px; letter-spacing: .22em; color: #8fa3c8;
-    font-weight: 600;
+    margin: 0 0 8px; font-size: 10px; letter-spacing: .22em; color: #9fb4d8;
+    font-weight: 600; text-shadow: 0 0 8px rgba(110,180,255,.35);
   }
   #feedlist { overflow: hidden; flex: 1; display: flex; flex-direction: column; gap: 4px; }
-  .ev { font-size: 11px; color: #b9c6de; border-left: 2px solid #3b6fd4; padding-left: 7px; }
-  .ev.r { border-color: #5ea1ff; }
+  .ev { font-size: 11px; color: #c4d1e8; border-left: 2px solid #3b6fd4; padding-left: 7px; }
+  .ev.r { border-color: #6fd3ff; }
   .ev.n { border-color: #b46bff; }
   .ev.s { border-color: #ffc857; }
   .ev .t { color: #66738f; margin-right: 6px; font-size: 10px; }
-  #spark { left: 14px; bottom: 14px; padding: 10px 14px; width: 248px; }
+
+  #spark { left: 14px; bottom: 14px; padding: 10px 14px; width: 250px; }
   #spark .row { display: flex; gap: 16px; font-size: 10px; color: #8fa3c8; align-items: center; }
   #spark svg { display: block; }
-  #agents { left: 14px; top: 76px; width: 250px; padding: 10px 12px; max-height: 320px; overflow: hidden; }
+  #agents { left: 14px; top: 76px; width: 252px; padding: 10px 12px; max-height: 320px; overflow: hidden; }
   .ag { display: flex; gap: 8px; align-items: baseline; font-size: 11px; padding: 2px 0; }
   .ag .nm { color: #dfe6f3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ag .tm { margin-left: auto; color: #66738f; font-size: 10px; white-space: nowrap; }
-  #legend { left: 14px; bottom: 106px; padding: 8px 12px; font-size: 10px; color: #8fa3c8; }
-  #legend .sw { display: inline-block; width: 16px; height: 2px; vertical-align: middle; margin-right: 6px; }
+  #legend { left: 14px; bottom: 108px; padding: 8px 12px; font-size: 10px; color: #9fb4d8; }
+  #legend .sw { display: inline-block; width: 16px; height: 2px; vertical-align: middle; margin-right: 6px;
+    box-shadow: 0 0 6px currentColor; }
   #hint { position: fixed; z-index: 3; right: 14px; bottom: 16px; color: #5c6a8a; font-size: 10px; }
   #lost {
     position: fixed; z-index: 5; top: 0; left: 0; right: 0; display: none;
-    background: #3b1220; color: #ffb3bd; text-align: center;
-    padding: 6px; font-size: 12px;
+    background: rgba(59, 18, 32, .9); color: #ffb3bd; text-align: center;
+    padding: 6px; font-size: 12px; backdrop-filter: blur(8px);
   }
 </style>
 </head>
@@ -91,79 +130,93 @@
 <div id="agents" class="panel"><h3>AGENTS</h3><div id="agentlist"></div></div>
 <div id="feed" class="panel"><h3>ACTIVITY</h3><div id="feedlist"></div></div>
 <div id="legend" class="panel">
-  <div><span class="sw" style="background:#5ea1ff"></span>used a note</div>
-  <div><span class="sw" style="background:#ffc857"></span>sent a DM</div>
-  <div><span class="sw" style="background:#43e08a"></span>cited a note</div>
+  <div style="color:#6fd3ff"><span class="sw" style="background:#6fd3ff"></span>used a note</div>
+  <div style="color:#ffb14a"><span class="sw" style="background:#ffb14a"></span>sent a DM</div>
+  <div style="color:#59f28e"><span class="sw" style="background:#59f28e"></span>cited a note</div>
 </div>
 <div id="spark" class="panel">
   <div class="row"><span>requests per poll · last 60</span></div>
   <svg id="sp1" width="220" height="34" style="margin-top:4px"></svg>
   <svg id="sp2" width="220" height="34" style="margin-top:4px"></svg>
-  <div class="row"><span style="color:#5ea1ff">— 2xx</span><span style="color:#ff5d6c">— 4xx / 5xx</span></div>
+  <div class="row"><span style="color:#6fd3ff">— 2xx</span><span style="color:#ff5d6c">— 4xx / 5xx</span></div>
 </div>
-<div id="hint">drag to orbit · scroll to zoom · polls every 2 s</div>
+<div id="hint">drag to orbit · scroll to zoom · node pulses = live activity</div>
 
-<script id="vs-node" type="x-shader/x-vertex">
-attribute vec3 aP; attribute float aS; attribute vec3 aC;
-uniform mat4 uV, uP; uniform float uT;
-varying vec3 vC; varying float vA;
+<script id="vs-strand" type="x-shader/x-vertex">
+attribute vec3 aP; attribute vec4 aC;
+uniform mat4 uV, uP;
+varying vec4 vC;
 void main() {
-  float pu = 0.72 + 0.28 * sin(uT * 1.8 + aP.x * 2.3 + aP.y * 1.7);
+  gl_Position = uP * uV * vec4(aP, 1.0);
+  vC = aC;
+}
+</script>
+<script id="fs-strand" type="x-shader/x-fragment">
+precision mediump float; varying vec4 vC;
+void main() { gl_FragColor = vec4(vC.rgb * 1.3, vC.a); }
+</script>
+<script id="vs-node" type="x-shader/x-vertex">
+attribute vec3 aP; attribute float aS; attribute vec3 aC; attribute float aX;
+uniform mat4 uV, uP;
+varying vec3 vC; varying float vX;
+void main() {
   vec4 mv = uV * vec4(aP, 1.0);
   gl_Position = uP * mv;
-  gl_PointSize = aS * pu * (240.0 / max(1.0, -mv.z));
-  vC = aC; vA = pu;
+  gl_PointSize = aS * (1600.0 / max(1.0, -mv.z));
+  vC = aC; vX = aX;
 }
 </script>
 <script id="fs-node" type="x-shader/x-fragment">
-precision mediump float; varying vec3 vC; varying float vA;
+precision mediump float; varying vec3 vC; varying float vX;
 void main() {
   vec2 q = gl_PointCoord - 0.5;
   float d = length(q) * 2.0;
-  float a = exp(-d * d * 3.5);
-  gl_FragColor = vec4(vC * (0.8 + 0.6 * vA) + vec3(0.25) * a, a);
-}
-</script>
-<script id="vs-line" type="x-shader/x-vertex">
-attribute vec3 aA; attribute vec3 aB; attribute float aF;
-uniform mat4 uV, uP;
-varying vec3 vM; varying float vF;
-void main() {
-  vec3 p = (gl_VertexID == 0) ? aA : aB;
-  gl_Position = uP * uV * vec4(p, 1.0);
-  vM = mix(aA, aB, 0.5); vF = aF;
-}
-</script>
-<script id="fs-line" type="x-shader/x-fragment">
-precision mediump float;
-uniform float uT;
-varying vec3 vM; varying float vF;
-void main() {
-  float seed = fract(sin(dot(vM, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
-  float k = (vF * 11.0) + 1.0;
-  float ph = fract(uT * (0.22 + vF * 0.25) + seed);
-  float pulse = pow(ph, 14.0) * k;
-  float a = 0.05 + min(pulse, 1.6);
-  vec3 c = mix(vec3(0.32, 0.52, 0.95), vec3(1.0), min(pulse * 0.6, 1.0));
+  float glow = exp(-d * d * 2.4);
+  float core = exp(-d * d * 20.0);
+  float a = glow * (0.35 + 0.75 * vX) + core * (0.7 + 0.5 * vX);
+  vec3 c = vC * (0.55 + 0.65 * vX) * glow + vec3(1.0) * core * (0.55 + 0.6 * vX);
   gl_FragColor = vec4(c, a);
 }
 </script>
-<script id="vs-star" type="x-shader/x-vertex">
-attribute vec3 aP; attribute float aS;
+<script id="vs-pulse" type="x-shader/x-vertex">
+attribute vec3 aP; attribute vec3 aC; attribute float aS;
 uniform mat4 uV, uP;
+varying vec3 vC;
 void main() {
   vec4 mv = uV * vec4(aP, 1.0);
   gl_Position = uP * mv;
-  gl_PointSize = aS * (240.0 / max(1.0, -mv.z));
+  gl_PointSize = aS * (300.0 / max(1.0, -mv.z));
+  vC = aC;
 }
 </script>
-<script id="fs-star" type="x-shader/x-fragment">
-precision mediump float;
+<script id="fs-pulse" type="x-shader/x-fragment">
+precision mediump float; varying vec3 vC;
 void main() {
   vec2 q = gl_PointCoord - 0.5;
   float d = length(q) * 2.0;
-  float a = exp(-d * d * 4.0) * 0.7;
-  gl_FragColor = vec4(0.45, 0.55, 0.75, a);
+  float glow = exp(-d * d * 3.0);
+  float core = exp(-d * d * 24.0);
+  gl_FragColor = vec4(vC * glow + vec3(1.0) * core * 0.9, glow * 0.8 + core * 0.8);
+}
+</script>
+<script id="vs-star" type="x-shader/x-vertex">
+attribute vec3 aP; attribute float aS; attribute float aPh;
+uniform mat4 uV, uP; uniform float uT;
+varying float vA;
+void main() {
+  vec4 mv = uV * vec4(aP, 1.0);
+  gl_Position = uP * mv;
+  gl_PointSize = aS * (260.0 / max(1.0, -mv.z));
+  vA = 0.45 + 0.45 * sin(uT * 0.7 + aPh);
+}
+</script>
+<script id="fs-star" type="x-shader/x-fragment">
+precision mediump float; varying float vA;
+void main() {
+  vec2 q = gl_PointCoord - 0.5;
+  float d = length(q) * 2.0;
+  float a = exp(-d * d * 3.8) * vA;
+  gl_FragColor = vec4(0.40, 0.62, 0.85, a);
 }
 </script>
 <script>
@@ -197,81 +250,198 @@ function prog(vs, fs) {
   if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
   return p;
 }
-const nodeBuf = gl ? gl.createBuffer() : null, lineBuf = gl ? gl.createBuffer() : null, starBuf = gl ? gl.createBuffer() : null;
-let pN = null, pL = null, pS = null, aP = 0, aS = 0, aC = 0, aA = 0, aB = 0, aF = 0, spP = 0, spS = 0;
+let pStrand = null, pNode = null, pPulse = null, pStar = null;
+let aSp = 0, aSc = 0, aPn = 0, aSn = 0, aCn = 0, aXn = 0, aPp = 0, aCp = 0, aSp2 = 0, aPst = 0, aSst = 0, aPh = 0;
+let strandBuf = null, edgeBuf = null, starBuf = null, nodeBuf = null, pulseBuf = null;
 if (gl) {
-  pN = prog('vs-node', 'fs-node'); pL = prog('vs-line', 'fs-line'); pS = prog('vs-star', 'fs-star');
-  aP = gl.getAttribLocation(pN, 'aP'); aS = gl.getAttribLocation(pN, 'aS'); aC = gl.getAttribLocation(pN, 'aC');
-  aA = gl.getAttribLocation(pL, 'aA'); aB = gl.getAttribLocation(pL, 'aB'); aF = gl.getAttribLocation(pL, 'aF');
-  spP = gl.getAttribLocation(pS, 'aP'); spS = gl.getAttribLocation(pS, 'aS');
+  pStrand = prog('vs-strand', 'fs-strand');
+  pNode = prog('vs-node', 'fs-node');
+  pPulse = prog('vs-pulse', 'fs-pulse');
+  pStar = prog('vs-star', 'fs-star');
+  aSp = gl.getAttribLocation(pStrand, 'aP'); aSc = gl.getAttribLocation(pStrand, 'aC');
+  aPn = gl.getAttribLocation(pNode, 'aP'); aSn = gl.getAttribLocation(pNode, 'aS');
+  aCn = gl.getAttribLocation(pNode, 'aC'); aXn = gl.getAttribLocation(pNode, 'aX');
+  aPp = gl.getAttribLocation(pPulse, 'aP'); aCp = gl.getAttribLocation(pPulse, 'aC'); aSp2 = gl.getAttribLocation(pPulse, 'aS');
+  aPst = gl.getAttribLocation(pStar, 'aP'); aSst = gl.getAttribLocation(pStar, 'aS'); aPh = gl.getAttribLocation(pStar, 'aPh');
+  strandBuf = gl.createBuffer(); edgeBuf = gl.createBuffer(); starBuf = gl.createBuffer();
+  nodeBuf = gl.createBuffer(); pulseBuf = gl.createBuffer();
 }
 
 function rand(n) { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
 function hash(str) { let h = 0; for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0; return Math.abs(h); }
+const TAU = Math.PI * 2;
+function nrm(v) { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0]/l, v[1]/l, v[2]/l]; }
+function cross(a, b) { return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]; }
 
-// ---- scene state (from server) ----
+// ---------------- palette (MIT connectome: hot core → cyan/blue periphery) ----------------
+const AMBER = [1.0, 0.52, 0.16], RED = [1.0, 0.26, 0.10], TEAL = [0.20, 0.82, 0.88],
+      BLUE = [0.28, 0.48, 1.0], GREEN = [0.32, 0.90, 0.55];
+function mix3(a, b, t) { return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t]; }
+function strandColor(t, isGreen) {
+  if (t < 0.30) return mix3(RED, AMBER, t / 0.30);
+  if (t < 0.62) return isGreen ? mix3(AMBER, GREEN, (t-0.30)/0.32) : mix3(AMBER, TEAL, (t-0.30)/0.32);
+  return mix3(TEAL, BLUE, (t-0.62)/0.38);
+}
+function nodeColor(r) { // r = world radius from center
+  if (r < 2.5) return AMBER;
+  if (r < 5) return mix3(AMBER, [0.45, 0.85, 1.0], (r-2.5)/2.5);
+  return [0.45, 0.85, 1.0];
+}
+const KIND_COLOR = { used: [0.40, 0.68, 1.0], sent: [1.0, 0.62, 0.22], cited: [0.32, 0.90, 0.55] };
+const KIND_SPEED = { used: 0.16, sent: 0.38, cited: 0.24 };
+
+// ---------------- scene geometry ----------------
+const BALL = [12.5, 9.5, 11.5];          // wider-than-tall ellipsoid
+const S2 = 420, SEGS = 22;               // filament strands, segments each
+const strandData = [];                   // { pts: [[x,y,z]...], cols: [[r,g,b,a]...] }
+function genStrands() {
+  strandData.length = 0;
+  for (let i = 0; i < S2; i++) {
+    const u = rand(i*3+1)*2-1, ph = rand(i*5+2)*TAU, s = Math.sqrt(1-u*u);
+    let dir = nrm([s*Math.cos(ph), u*0.85, s*Math.sin(ph)]);
+    const dangling = i % 19 === 0;
+    if (dangling) dir = nrm([dir[0]*0.55, dir[1]*0.55 - 0.75, dir[2]*0.55]); // loose strands hang below
+    const startR = Math.pow(rand(i*7+3), 2.0) * 0.22;
+    const endR = dangling ? 1.15 + rand(i*37+4)*0.45 : 0.72 + rand(i*11+4)*0.55;
+    const perp1 = nrm(cross(dir, [0,1,0]));
+    const perp2 = cross(dir, perp1);
+    const a1 = 0.10 + rand(i*13+5)*0.18, a2 = 0.06 + rand(i*17+6)*0.14;
+    const w1 = 2 + Math.floor(rand(i*19+7)*2), w2 = 3 + Math.floor(rand(i*23+8)*2);
+    const p1 = rand(i*29+9)*TAU, p2 = rand(i*31+10)*TAU;
+    const isGreen = i % 13 === 0;
+    const pts = [], cols = [];
+    for (let j = 0; j <= SEGS; j++) {
+      const t = j / SEGS;
+      const r = startR + (endR - startR) * Math.pow(t, 0.75);
+      const sway = t * t;
+      const x = dir[0]*r + perp1[0]*Math.sin(t*w1*TAU+p1)*a1*sway + perp2[0]*Math.sin(t*w2*TAU+p2)*a2*sway;
+      const y = dir[1]*r + perp1[1]*Math.sin(t*w1*TAU+p1)*a1*sway + perp2[1]*Math.sin(t*w2*TAU+p2)*a2*sway;
+      const z = dir[2]*r + perp1[2]*Math.sin(t*w1*TAU+p1)*a1*sway + perp2[2]*Math.sin(t*w2*TAU+p2)*a2*sway;
+      pts.push([x*BALL[0], y*BALL[1], z*BALL[2]]);
+      const c = strandColor(t, isGreen);
+      cols.push([c[0], c[1], c[2], 0.55*(1-t) + 0.18]);
+    }
+    strandData.push({ pts, cols });
+  }
+}
+genStrands();
+
+// small lights scattered along the filaments
+const threadLights = [];
+{
+  let i = 0;
+  for (const sd of strandData) {
+    if (i % 3 !== 0) continue;
+    const k = 1 + Math.floor(rand(i*41+13) * 2);
+    for (let m = 0; m < k; m++) {
+      const j = 1 + Math.floor(rand(i*43+17+m) * (SEGS-1));
+      const p = sd.pts[j];
+      const c = sd.cols[j];
+      threadLights.push([p[0], p[1], p[2], 0.14 + rand(i*47+19+m)*0.16, rand(i*53+23+m)*TAU,
+        c[1] > c[0] ? 0 : 1]); // 0 = hot (amber) tint, 1 = cool (cyan) tint
+    }
+    i++;
+  }
+}
+
+// starfield — biased to corners/edges around the ball
+const starArr = [];
+for (let i = 0; i < 300; i++) {
+  const u = rand(i + 900) * 2 - 1, ph = rand(i + 700) * Math.PI * 2;
+  const r = 55 + rand(i + 500) * 30, s = Math.sqrt(1 - u * u);
+  starArr.push([r * s * Math.cos(ph) * 1.25, r * u * 1.05, r * s * Math.sin(ph) * 1.25,
+                0.5 + rand(i) * 1.0, rand(i+300) * TAU]);
+}
+
+// ---------------- live state ----------------
 let nodes = [], edges = [];
-let nodePos = new Map();
-let edgeCount = 0;
+let nodePos = new Map();        // id -> [x,y,z]
+let nodeExcite = new Map();     // id -> activity energy (spike, decays)
+let nodeBase = new Map();       // id -> recency baseline 0..1
+let nodeMeta = new Map();       // id -> {pos, color, r}
+let edgeObjs = [];              // {A, C, B, kind, f, act, pulses:[{seed,speed,size}]}
+let coreExc = 0.12;
+let actSmooth = 0.05, actCounter = 0;
 
 function layout() {
   const n = nodes.length;
-  nodePos = new Map();
+  nodePos = new Map(); nodeMeta = new Map();
   const golden = Math.PI * (3 - Math.sqrt(5));
   nodes.forEach((nd, i) => {
     const y = n === 1 ? 0 : 1 - (i / (n - 1)) * 2;
     const r = Math.sqrt(Math.max(0, 1 - y * y));
     const th = golden * i + rand(i) * 0.5;
-    const rad = 9 + rand(i + 40) * 3.5;
-    nodePos.set(nd.id, [Math.cos(th) * r * rad, y * 8 * (0.8 + rand(i + 80) * 0.4), Math.sin(th) * r * rad]);
+    const rad = 0.42 + rand(i + 40) * 0.55;   // spread through the ball body
+    const x = Math.cos(th) * r * rad * BALL[0] * 0.8;
+    const yy = y * rad * BALL[1] * 0.8;
+    const z = Math.sin(th) * r * rad * BALL[2] * 0.8;
+    const wr = Math.hypot(x, yy, z);
+    nodePos.set(nd.id, [x, yy, z]);
+    nodeMeta.set(nd.id, { pos: [x, yy, z], color: nodeColor(wr), r: wr, active: nd.status === 'active' });
+  });
+  buildEdges();
+}
+function buildEdges() {
+  edgeObjs = [];
+  edges.forEach((e, i) => {
+    const A = nodePos.get(e.from), B = nodePos.get(e.to);
+    if (!A || !B) return;
+    const d = Math.hypot(B[0]-A[0], B[1]-A[1], B[2]-A[2]) || 1;
+    const mid = [(A[0]+B[0])/2, (A[1]+B[1])/2, (A[2]+B[2])/2];
+    let n = nrm(cross([B[0]-A[0], B[1]-A[1], B[2]-A[2]], [0,1,0.3]));
+    const side = rand(i*61+2) > 0.5 ? 1 : -1;
+    const off = (d * 0.22 + 1.0) * side;
+    const C = [mid[0]+n[0]*off, mid[1]+n[1]*off, mid[2]+n[2]*off];
+    const np = 2 + (e.kind === 'sent' ? 2 : 0);
+    const pulses = [];
+    for (let k = 0; k < np; k++) pulses.push({ seed: rand(i*67+3+k), speed: KIND_SPEED[e.kind] || 0.2 });
+    edgeObjs.push({ A, C, B, kind: e.kind || 'used', f: Math.min(e.count / 20, 1), act: 0.25, pulses });
   });
 }
-
-function upload() {
+function uploadEdges() {
   if (!gl) return;
-  const np = [];
-  for (const nd of nodes) {
-    const p = nodePos.get(nd.id) || [0, 0, 0];
-    const active = nd.status === 'active';
-    let c;
-    if (active) {
-      const b = rand(hash(nd.id) % 97) * 0.5;
-      c = b < 0.3 ? [0.30 + b, 0.55, 0.95] : [0.85, 0.35, 0.55];
-    } else c = [0.4, 0.45, 0.55];
-    const s = active ? 3.2 + rand((hash(nd.id) % 89) + 3) * 1.6 : 1.6;
-    np.push(p[0], p[1], p[2], s, c[0], c[1], c[2]);
-  }
-  gl.bindBuffer(gl.ARRAY_BUFFER, nodeBuf);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(np), gl.DYNAMIC_DRAW);
-
   const lp = [];
-  edgeCount = 0;
-  for (const e of edges) {
-    const a = nodePos.get(e.from), b = nodePos.get(e.to);
-    if (!a || !b) continue;
-    edgeCount++;
-    const f = Math.min(e.count / 20, 1);
-    lp.push(a[0], a[1], a[2], b[0], b[1], b[2], f);
-    lp.push(b[0], b[1], b[2], a[0], a[1], a[2], f);
+  const SEG = 18;
+  for (const eo of edgeObjs) {
+    const c = KIND_COLOR[eo.kind] || KIND_COLOR.used;
+    for (let j = 0; j < SEG; j++) {
+      const u0 = j / SEG, u1 = (j + 1) / SEG;
+      const p0 = qbez(eo.A, eo.C, eo.B, u0), p1 = qbez(eo.A, eo.C, eo.B, u1);
+      lp.push(p0[0], p0[1], p0[2], c[0], c[1], c[2], 0.30);
+      lp.push(p1[0], p1[1], p1[2], c[0], c[1], c[2], 0.30);
+    }
   }
-  gl.bindBuffer(gl.ARRAY_BUFFER, lineBuf);
+  gl.bindBuffer(gl.ARRAY_BUFFER, edgeBuf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lp), gl.DYNAMIC_DRAW);
 }
-
-// starfield (static)
-const stars = new Float32Array(260 * 4);
-for (let i = 0; i < 260; i++) {
-  const u = rand(i + 900) * 2 - 1, ph = rand(i + 700) * Math.PI * 2;
-  const r = 60 + rand(i + 500) * 60, s = Math.sqrt(1 - u * u);
-  stars.set([r * s * Math.cos(ph), r * u, r * s * Math.sin(ph), 0.5 + rand(i) * 1.1], i * 4);
+function uploadStrands() {
+  if (!gl) return;
+  const lp = [];
+  for (const sd of strandData) {
+    for (let j = 0; j < SEGS; j++) {
+      const p0 = sd.pts[j], p1 = sd.pts[j+1], c0 = sd.cols[j], c1 = sd.cols[j+1];
+      lp.push(p0[0], p0[1], p0[2], c0[0], c0[1], c0[2], c0[3]);
+      lp.push(p1[0], p1[1], p1[2], c1[0], c1[1], c1[2], c1[3]);
+    }
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER, strandBuf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lp), gl.DYNAMIC_DRAW);
 }
-if (gl) {
+function qbez(A, C, B, u) {
+  const w0 = (1-u)*(1-u), w1 = 2*(1-u)*u, w2 = u*u;
+  return [w0*A[0]+w1*C[0]+w2*B[0], w0*A[1]+w1*C[1]+w2*B[1], w0*A[2]+w1*C[2]+w2*B[2]];
+}
+function uploadStars() {
+  if (!gl) return;
+  const a = new Float32Array(starArr.flat());
   gl.bindBuffer(gl.ARRAY_BUFFER, starBuf);
-  gl.bufferData(gl.ARRAY_BUFFER, stars, gl.STATIC_DRAW);
+  gl.bufferData(gl.ARRAY_BUFFER, a, gl.STATIC_DRAW);
 }
+uploadStars();
+uploadStrands();
 
-// camera
-let camT = { az: 0.6, el: 0.22, r: 26 }, cam = { ...camT };
+// ---------------- camera ----------------
+let camT = { az: 0.6, el: 0.18, r: 23 }, cam = { ...camT };
 let dragging = false, lx = 0, ly = 0;
 cv.addEventListener('mousedown', e => { dragging = true; lx = e.clientX; ly = e.clientY; });
 addEventListener('mouseup', () => dragging = false);
@@ -282,7 +452,7 @@ addEventListener('mousemove', e => {
   lx = e.clientX; ly = e.clientY;
 });
 addEventListener('wheel', e => {
-  camT.r = Math.max(10, Math.min(60, camT.r + e.deltaY * 0.02));
+  camT.r = Math.max(12, Math.min(60, camT.r + e.deltaY * 0.02));
 }, { passive: true });
 
 function m4persp(out, fovy, asp, n, f) {
@@ -307,19 +477,46 @@ function m4lookAt(out, ex, ey, ez, tx, ty, tz) {
   return out;
 }
 
-let uV = null, uP = null, uT = null;
+let uU = null;
 if (gl) {
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE);   // additive glow
-  uV = {}; uP = {}; uT = {};
-  for (const p of [pN, pL, pS]) { uV[p] = gl.getUniformLocation(p, 'uV'); uP[p] = gl.getUniformLocation(p, 'uP'); uT[p] = gl.getUniformLocation(p, 'uT'); }
+  uU = {};
+  for (const p of [pStrand, pNode, pPulse, pStar]) {
+    uU[p] = { v: gl.getUniformLocation(p, 'uV'), p: gl.getUniformLocation(p, 'uP'), t: gl.getUniformLocation(p, 'uT') };
+  }
 }
 const t0 = performance.now();
+let lastT = t0;
+
+// node dynamic buffer contents (also used by 2D path)
+let nodeArr = [];   // [x,y,z,size,r,g,b,exc]...
+function buildNodeArr(t) {
+  nodeArr.length = 0;
+  const decay = Math.exp(-((performance.now() - lastT) / 1000) * 1.7);
+  lastT = performance.now();
+  for (const nd of nodes) {
+    const m = nodeMeta.get(nd.id);
+    if (!m) continue;
+    const e = Math.min(2.5, (nodeExcite.get(nd.id) || 0) * decay) + (nodeBase.get(nd.id) || 0);
+    nodeExcite.set(nd.id, e);
+    nodeArr.push(m.pos[0], m.pos[1], m.pos[2],
+      m.active ? 0.30 + 0.34 * Math.min(e, 1.6) : 0.14,
+      m.color[0], m.color[1], m.color[2], Math.min(e, 1.6));
+  }
+  // core heartbeat sprite — the hot knot, pulses with live request rate
+  const ce = Math.min(1.6, 0.14 + actSmooth * 0.55);
+  nodeArr.push(0, 0, 0, 0.7 + 0.45 * ce, AMBER[0], AMBER[1], AMBER[2], ce);
+  coreExc = ce;
+}
 
 function frame() {
   const t = (performance.now() - t0) / 1000;
-  if (!dragging) camT.az += 0.0011;
+  if (!dragging) camT.az += 0.0007;
   for (const k of ['az', 'el', 'r']) cam[k] += (camT[k] - cam[k]) * 0.08;
+  // edge activity decay
+  for (const eo of edgeObjs) eo.act *= Math.exp(-((performance.now() - lastT) / 1000) * 1.2);
+  buildNodeArr(t);
   if (TWO_D) { frame2D(t); requestAnimationFrame(frame); return; }
   const ex = cam.r * Math.cos(cam.el) * Math.cos(cam.az);
   const ey = cam.r * Math.sin(cam.el);
@@ -330,99 +527,162 @@ function frame() {
   gl.clearColor(0, 0, 0, 0);
   gl.clear(gl.COLOR_BUFFER_BIT);
 
-  // stars
-  gl.useProgram(pS);
-  gl.uniformMatrix4fv(uV[pS], false, V); gl.uniformMatrix4fv(uP[pS], false, P);
+  // starfield
+  gl.useProgram(pStar);
+  gl.uniformMatrix4fv(uU[pStar].v, false, V); gl.uniformMatrix4fv(uU[pStar].p, false, P); gl.uniform1f(uU[pStar].t, t);
   gl.bindBuffer(gl.ARRAY_BUFFER, starBuf);
-  gl.enableVertexAttribArray(spP); gl.vertexAttribPointer(spP, 3, gl.FLOAT, false, 16, 0);
-  gl.enableVertexAttribArray(spS); gl.vertexAttribPointer(spS, 1, gl.FLOAT, false, 16, 12);
-  gl.drawArrays(gl.POINTS, 0, 260);
+  gl.enableVertexAttribArray(aPst); gl.vertexAttribPointer(aPst, 3, gl.FLOAT, false, 20, 0);
+  gl.enableVertexAttribArray(aSst); gl.vertexAttribPointer(aSst, 1, gl.FLOAT, false, 20, 12);
+  gl.enableVertexAttribArray(aPh); gl.vertexAttribPointer(aPh, 1, gl.FLOAT, false, 20, 16);
+  gl.drawArrays(gl.POINTS, 0, starArr.length);
+  gl.disableVertexAttribArray(aPh);
 
-  // synapse edges
-  if (edgeCount > 0) {
-    gl.useProgram(pL);
-    gl.uniformMatrix4fv(uV[pL], false, V); gl.uniformMatrix4fv(uP[pL], false, P); gl.uniform1f(uT[pL], t);
-    gl.bindBuffer(gl.ARRAY_BUFFER, lineBuf);
-    gl.enableVertexAttribArray(aA); gl.vertexAttribPointer(aA, 3, gl.FLOAT, false, 56, 0);
-    gl.enableVertexAttribArray(aB); gl.vertexAttribPointer(aB, 3, gl.FLOAT, false, 56, 12);
-    gl.enableVertexAttribArray(aF); gl.vertexAttribPointer(aF, 1, gl.FLOAT, false, 56, 24);
-    gl.drawArrays(gl.LINES, 0, edgeCount * 2);
-    gl.disableVertexAttribArray(aB); gl.disableVertexAttribArray(aF);
+  // filament strands
+  gl.useProgram(pStrand);
+  gl.uniformMatrix4fv(uU[pStrand].v, false, V); gl.uniformMatrix4fv(uU[pStrand].p, false, P);
+  gl.bindBuffer(gl.ARRAY_BUFFER, strandBuf);
+  gl.enableVertexAttribArray(aSp); gl.vertexAttribPointer(aSp, 3, gl.FLOAT, false, 28, 0);
+  gl.enableVertexAttribArray(aSc); gl.vertexAttribPointer(aSc, 4, gl.FLOAT, false, 28, 12);
+  gl.drawArrays(gl.LINES, 0, S2 * SEGS * 2);
+  gl.disableVertexAttribArray(aSc);
+
+  // edge curves
+  if (edgeObjs.length) {
+    gl.useProgram(pStrand);
+    gl.uniformMatrix4fv(uU[pStrand].v, false, V); gl.uniformMatrix4fv(uU[pStrand].p, false, P);
+    gl.bindBuffer(gl.ARRAY_BUFFER, edgeBuf);
+    gl.enableVertexAttribArray(aSp); gl.vertexAttribPointer(aSp, 3, gl.FLOAT, false, 28, 0);
+    gl.enableVertexAttribArray(aSc); gl.vertexAttribPointer(aSc, 4, gl.FLOAT, false, 28, 12);
+    gl.drawArrays(gl.LINES, 0, edgeObjs.length * 18 * 2);
+    gl.disableVertexAttribArray(aSc);
   }
 
-  // neurons
-  gl.useProgram(pN);
-  gl.uniformMatrix4fv(uV[pN], false, V); gl.uniformMatrix4fv(uP[pN], false, P); gl.uniform1f(uT[pN], t);
+  // travelling pulses along edges (live activity signals)
+  {
+    const lp = [];
+    for (const eo of edgeObjs) {
+      const c = KIND_COLOR[eo.kind] || KIND_COLOR.used;
+      for (const pu of eo.pulses) {
+        const u = (t * pu.speed + pu.seed) % 1;
+        const p = qbez(eo.A, eo.C, eo.B, u);
+        const b = 0.35 + 0.65 * Math.min(eo.act + eo.f, 1.5);
+        lp.push(p[0], p[1], p[2], c[0]*b, c[1]*b, c[2]*b, 0.22 + 0.26 * b);
+      }
+    }
+    gl.useProgram(pPulse);
+    gl.uniformMatrix4fv(uU[pPulse].v, false, V); gl.uniformMatrix4fv(uU[pPulse].p, false, P);
+    gl.bindBuffer(gl.ARRAY_BUFFER, pulseBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lp), gl.DYNAMIC_DRAW);
+    gl.enableVertexAttribArray(aPp); gl.vertexAttribPointer(aPp, 3, gl.FLOAT, false, 28, 0);
+    gl.enableVertexAttribArray(aCp); gl.vertexAttribPointer(aCp, 3, gl.FLOAT, false, 28, 12);
+    gl.enableVertexAttribArray(aSp2); gl.vertexAttribPointer(aSp2, 1, gl.FLOAT, false, 28, 24);
+    gl.drawArrays(gl.POINTS, 0, lp.length / 7);
+    gl.disableVertexAttribArray(aCp); gl.disableVertexAttribArray(aSp2);
+  }
+
+  // agent neurons + core heartbeat
+  gl.useProgram(pNode);
+  gl.uniformMatrix4fv(uU[pNode].v, false, V); gl.uniformMatrix4fv(uU[pNode].p, false, P);
   gl.bindBuffer(gl.ARRAY_BUFFER, nodeBuf);
-  gl.enableVertexAttribArray(aP); gl.vertexAttribPointer(aP, 3, gl.FLOAT, false, 28, 0);
-  gl.enableVertexAttribArray(aS); gl.vertexAttribPointer(aS, 1, gl.FLOAT, false, 28, 12);
-  gl.enableVertexAttribArray(aC); gl.vertexAttribPointer(aC, 3, gl.FLOAT, false, 28, 16);
-  gl.drawArrays(gl.POINTS, 0, nodes.length);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(nodeArr), gl.DYNAMIC_DRAW);
+  gl.enableVertexAttribArray(aPn); gl.vertexAttribPointer(aPn, 3, gl.FLOAT, false, 32, 0);
+  gl.enableVertexAttribArray(aSn); gl.vertexAttribPointer(aSn, 1, gl.FLOAT, false, 32, 12);
+  gl.enableVertexAttribArray(aCn); gl.vertexAttribPointer(aCn, 3, gl.FLOAT, false, 32, 16);
+  gl.enableVertexAttribArray(aXn); gl.vertexAttribPointer(aXn, 1, gl.FLOAT, false, 32, 28);
+  gl.drawArrays(gl.POINTS, 0, nodeArr.length / 8);
+  gl.disableVertexAttribArray(aCn); gl.disableVertexAttribArray(aXn);
 
   requestAnimationFrame(frame);
 }
 
 // ---------------- 2D fallback (no WebGL) ----------------
 function project2D(x, y, z) {
-  // orbit camera → simple perspective projection
   const ca = Math.cos(cam.az), sa = Math.sin(cam.az), ce = Math.cos(cam.el), se = Math.sin(cam.el);
   const x1 = x * ca - z * sa, z1 = x * sa + z * ca;
   const y1 = y * ce - z1 * se, z2 = y * se + z1 * ce;
   const d = cam.r + z2;
-  const f = Math.min(W, H) / 16;
+  const f = Math.min(W, H) / 1.5;
   return [W / 2 + (x1 * f) / d, H / 2 + (y1 * f) / d, d];
 }
 function frame2D(t) {
   ctx2.clearRect(0, 0, W, H);
-  for (let i = 0; i < 260; i++) {
-    const [sx, sy, sz, ss] = [stars[i*4], stars[i*4+1], stars[i*4+2], stars[i*4+3]];
+  // stars
+  for (let i = 0; i < starArr.length; i++) {
+    const [sx, sy, sz, ss, sp] = starArr[i];
     const [px, py, d] = project2D(sx, sy, sz);
     if (d < 1) continue;
-    const a = Math.max(0, 0.5 - d / 200);
-    ctx2.globalAlpha = a;
-    ctx2.fillStyle = '#8aa2c8';
-    const r = Math.max(0.4, ss * 0.5 * (26 / d));
+    ctx2.globalAlpha = Math.min(1, Math.max(0, (0.45 + 0.45 * Math.sin(t * 0.7 + sp)) * (0.75 - d / 200)));
+    ctx2.fillStyle = '#7fb2e0';
+    const r = Math.max(1.0, ss * (Math.min(W, H) / 1.5 / d) * 0.09);
     ctx2.fillRect(px, py, r, r);
   }
   ctx2.globalAlpha = 1;
 
-  const edgeList = [];
-  for (const e of edges) {
-    const a = nodePos.get(e.from), b = nodePos.get(e.to);
-    if (!a || !b) continue;
-    edgeList.push([a, b, Math.min(e.count / 20, 1)]);
-  }
-  ctx2.lineWidth = 1;
-  for (const [a, b, f] of edgeList) {
-    const [ax, ay, ad] = project2D(a[0], a[1], a[2]);
-    const [bx, by, bd] = project2D(b[0], b[1], b[2]);
-    const alpha = Math.max(0.04, 0.10 - Math.max(ad, bd) / 400);
-    ctx2.strokeStyle = 'rgba(110,150,230,' + alpha.toFixed(3) + ')';
-    ctx2.beginPath(); ctx2.moveTo(ax, ay); ctx2.lineTo(bx, by); ctx2.stroke();
-    const seed = (Math.sin(ax * 12.9898 + by * 78.233) * 43758.5453) % 1;
-    const ph = (t * (0.25 + f * 0.3) + Math.abs(seed)) % 1;
-    const px = ax + (bx - ax) * ph, py = ay + (by - ay) * ph;
-    const pa = Math.max(0, (1 - ph * 0.5)) * (0.25 + f * 0.75);
-    ctx2.fillStyle = 'rgba(190,215,255,' + pa.toFixed(3) + ')';
-    ctx2.beginPath(); ctx2.arc(px, py, 1.6 + f * 2, 0, 7); ctx2.fill();
+  // filament strands (subset for 2D speed)
+  ctx2.lineWidth = Math.max(0.5, 0.55 * devicePixelRatio);
+  const STEP = Math.ceil(strandData.length / 340);
+  for (let si = 0; si < strandData.length; si += STEP) {
+  const sd = strandData[si];
+    const mid = Math.floor(sd.pts.length / 2);
+    const c = sd.cols[mid];
+    ctx2.strokeStyle = 'rgba(' + Math.round(c[0]*255) + ',' + Math.round(c[1]*255) + ',' + Math.round(c[2]*255) + ',' + (c[3]*0.7).toFixed(3) + ')';
+    ctx2.beginPath();
+    let started = false, prevP = null;
+    for (const p of sd.pts) {
+      const [px, py, d] = project2D(p[0], p[1], p[2]);
+      if (d < 1) { started = false; continue; }
+      if (!started) { ctx2.moveTo(px, py); started = true; }
+      else if (prevP) { const mx = (prevP[0]+px)/2, my = (prevP[1]+py)/2; ctx2.quadraticCurveTo(prevP[0], prevP[1], mx, my); ctx2.lineTo(px, py); }
+      else ctx2.lineTo(px, py);
+      prevP = [px, py];
+    }
+    ctx2.stroke();
   }
 
-  for (const nd of nodes) {
-    const p = nodePos.get(nd.id) || [0, 0, 0];
-    const [px, py, d] = project2D(p[0], p[1], p[2]);
+  // edge curves + travelling pulses
+  for (const eo of edgeObjs) {
+    const c = KIND_COLOR[eo.kind] || KIND_COLOR.used;
+    ctx2.strokeStyle = 'rgba(' + Math.round(c[0]*255) + ',' + Math.round(c[1]*255) + ',' + Math.round(c[2]*255) + ',0.35)';
+    ctx2.beginPath();
+    for (let j = 0; j <= 18; j++) {
+      const p = qbez(eo.A, eo.C, eo.B, j / 18);
+      const [px, py, d] = project2D(p[0], p[1], p[2]);
+      if (j === 0) ctx2.moveTo(px, py); else ctx2.lineTo(px, py);
+    }
+    ctx2.stroke();
+    for (const pu of eo.pulses) {
+      const u = (t * pu.speed + pu.seed) % 1;
+      const p = qbez(eo.A, eo.C, eo.B, u);
+      const [px, py, d] = project2D(p[0], p[1], p[2]);
+      if (d < 1) continue;
+      const b = 0.35 + 0.65 * Math.min(eo.act + eo.f, 1.5);
+      ctx2.fillStyle = 'rgba(' + Math.round(c[0]*255) + ',' + Math.round(c[1]*255) + ',' + Math.round(c[2]*255) + ',' + b.toFixed(2) + ')';
+      ctx2.beginPath(); ctx2.arc(px, py, 1.5 + 2 * b * (24 / d) * 0.5, 0, TAU); ctx2.fill();
+    }
+  }
+
+  // thread lights
+  for (const tl of threadLights) {
+    const [px, py, d] = project2D(tl[0], tl[1], tl[2]);
     if (d < 1) continue;
-    const pulse = 0.72 + 0.28 * Math.sin(t * 1.8 + p[0] * 2.3 + p[1] * 1.7);
-    const active = nd.status === 'active';
-    const base = active
-      ? (rand(hash(nd.id) % 97) * 0.5 < 0.3 ? '70,140,255' : '230,90,140')
-      : '110,120,140';
-    const size = Math.max(1.2, (active ? 5 : 2.4) * pulse * (26 / d));
-    const g = ctx2.createRadialGradient(px, py, 0, px, py, size * 3);
-    g.addColorStop(0, 'rgba(' + base + ',' + (active ? 0.9 : 0.4) + ')');
-    g.addColorStop(0.4, 'rgba(' + base + ',' + (active ? 0.35 : 0.15) + ')');
-    g.addColorStop(1, 'rgba(' + base + ',0)');
-    ctx2.fillStyle = g;
-    ctx2.beginPath(); ctx2.arc(px, py, size * 3, 0, 7); ctx2.fill();
+    const tw = 0.45 + 0.45 * Math.sin(t * 0.7 + tl[4]);
+    const col = tl[5] === 0 ? '255,150,70' : '110,220,255';
+    ctx2.fillStyle = 'rgba(' + col + ',' + (tw * 0.8).toFixed(2) + ')';
+    ctx2.beginPath(); ctx2.arc(px, py, Math.max(0.5, tl[3] * (26 / d)), 0, TAU); ctx2.fill();
+  }
+
+  // agent neurons + core (from shared nodeArr)
+  for (let i = 0; i < nodeArr.length; i += 8) {
+    const [x, y, z, sz, r, g, b, exc] = [nodeArr[i], nodeArr[i+1], nodeArr[i+2], nodeArr[i+3], nodeArr[i+4], nodeArr[i+5], nodeArr[i+6], nodeArr[i+7]];
+    const [px, py, d] = project2D(x, y, z);
+    if (d < 1) continue;
+    const size = Math.max(1.5, sz * 34 * (26 / d));
+    const gr = ctx2.createRadialGradient(px, py, 0, px, py, size * 3);
+    gr.addColorStop(0, 'rgba(255,255,255,' + Math.min(1, 0.5 + 0.5 * exc).toFixed(2) + ')');
+    gr.addColorStop(0.25, 'rgba(' + Math.round(r*255) + ',' + Math.round(g*255) + ',' + Math.round(b*255) + ',' + (0.35 + 0.6 * Math.min(exc,1)).toFixed(2) + ')');
+    gr.addColorStop(1, 'rgba(' + Math.round(r*255) + ',' + Math.round(g*255) + ',' + Math.round(b*255) + ',0)');
+    ctx2.fillStyle = gr;
+    ctx2.beginPath(); ctx2.arc(px, py, size * 3, 0, TAU); ctx2.fill();
   }
 }
 
@@ -434,7 +694,6 @@ let prev = null, lastHttp = {};
 let hist = { a: [], b: [] };
 const MAXH = 60;
 let lostShown = false, prevAgentIds = '';
-let lastDelta = { two: 0, bad: 0 };
 
 function setChip(id, cls, label) {
   const el = $(id);
@@ -479,6 +738,15 @@ function parseMetrics(text) {
   return out;
 }
 
+function exciteAgents(count) {
+  const active = nodes.filter(n => n.status === 'active');
+  if (!active.length || !count) return;
+  for (let i = 0; i < count; i++) {
+    const nd = active[actCounter++ % active.length];
+    nodeExcite.set(nd.id, Math.min(2.5, (nodeExcite.get(nd.id) || 0) + 1.0 + rand(actCounter) * 0.6));
+  }
+}
+
 async function poll() {
   try {
     const [tz, met, gr] = await Promise.all([
@@ -497,10 +765,15 @@ async function poll() {
     const ids = nodes.map(x => x.id).sort().join(',');
     if (ids !== prevAgentIds) {
       layout();
+      uploadEdges();
       if (prevAgentIds !== '') feed('n', 'topology changed · ' + nodes.length + ' agents, ' + edges.length + ' links');
       prevAgentIds = ids;
     }
-    upload();
+    // recency baseline: recent last_active → brighter resting node
+    for (const a of ag) {
+      const s = Math.max(0, (Date.now() - new Date(a.last_active).getTime()) / 1000);
+      nodeBase.set(a.id, Math.max(0, 0.35 * (1 - s / 10800)));
+    }
 
     $('agentlist').innerHTML = ag.map(a =>
       '<div class="ag"><span class="dot ' + (a.status === 'active' ? 'ok' : 'warn') + '" style="width:6px;height:6px"></span>' +
@@ -523,18 +796,25 @@ async function poll() {
     } else {
       feed('n', 'telemetry online · ' + st.versions + ' versions, ' + st.reads + ' reads, ' + ag.length + ' agents');
     }
-    lastDelta = { two: dTwo, bad: dBad };
+    // drive the scene from live deltas
+    const rate = (dTwo + dBad) / 2;   // requests per second
+    actSmooth += (rate - actSmooth) * 0.35;
+    exciteAgents(dTwo);
+    if (dV > 0) {
+      // new versions light up the core + every edge briefly
+      for (const eo of edgeObjs) eo.act = Math.min(1.5, eo.act + 0.5);
+    }
     lastHttp = http;
     prev = { reads: st.reads, versions: st.versions, streams: hz.streams };
 
     hist.a.push(dTwo); hist.b.push(dBad);
     if (hist.a.length > MAXH) { hist.a.shift(); hist.b.shift(); }
-    spark($('sp1'), hist.a, '#5ea1ff');
+    spark($('sp1'), hist.a, '#6fd3ff');
     spark($('sp2'), hist.b, '#ff5d6c');
   } catch (e) {
     if (!lostShown) { $('lost').style.display = 'block'; lostShown = true; }
   }
-};
+}
 setInterval(poll, 2000);
 poll();
 </script>
