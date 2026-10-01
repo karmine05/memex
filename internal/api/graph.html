@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>memex · live telemetry</title>
+<title>memex · live inference</title>
 <style>
   :root { color-scheme: dark; }
   * { box-sizing: border-box; }
@@ -12,149 +12,195 @@
     margin: 0; overflow: hidden; background: #000; color: #dfe6f3;
     font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
   }
-  #bg {
-    position: fixed; inset: 0; z-index: 0;
-    background:
-      radial-gradient(900px 600px at 8% 6%, rgba(30, 90, 160, .10), transparent 65%),
-      radial-gradient(900px 600px at 92% 8%, rgba(30, 90, 160, .08), transparent 65%),
-      radial-gradient(900px 600px at 8% 94%, rgba(20, 60, 130, .08), transparent 65%),
-      radial-gradient(900px 600px at 92% 94%, rgba(20, 60, 130, .10), transparent 65%),
-      #000;
-  }
+  #bg { position: fixed; inset: 0; z-index: 0; background: #000; overflow: hidden; }
+  .neb { position: absolute; width: 90vmax; height: 90vmax; border-radius: 50%; opacity: .5;
+    will-change: transform; }
+  .neb-a { top: -55vmax; left: -45vmax;
+    background: radial-gradient(closest-side, rgba(28, 70, 140, .34), transparent 70%);
+    animation: drift-a 90s ease-in-out infinite alternate; }
+  .neb-b { bottom: -60vmax; right: -40vmax;
+    background: radial-gradient(closest-side, rgba(16, 90, 110, .28), transparent 70%);
+    animation: drift-b 110s ease-in-out infinite alternate; }
+  .neb-c { top: 18%; left: 40%; width: 64vmax; height: 64vmax;
+    background: radial-gradient(closest-side, rgba(70, 40, 130, .2), transparent 70%);
+    animation: drift-c 130s ease-in-out infinite alternate; }
+  @keyframes drift-a { to { transform: translate(9vmax, 7vmax) scale(1.15); } }
+  @keyframes drift-b { to { transform: translate(-8vmax, -6vmax) scale(1.1); } }
+  @keyframes drift-c { to { transform: translate(-10vmax, 5vmax) scale(1.2); } }
+  #vig { position: fixed; inset: 0; z-index: 2; pointer-events: none;
+    background: radial-gradient(ellipse at 50% 42%, transparent 52%, rgba(0,0,0,.42) 100%); }
+  #dither { position: fixed; inset: 0; z-index: 2; pointer-events: none; opacity: .05;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 2 2' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='1' height='1' fill='%23ffffff'/%3E%3Crect x='1' y='1' width='1' height='1' fill='%23ffffff'/%3E%3C/svg%3E");
+    background-size: 2px 2px; }
   #c { position: fixed; inset: 0; z-index: 1; display: block; cursor: grab; }
   #c:active { cursor: grabbing; }
+  #c.pick { cursor: pointer; }
+  #veil { position: fixed; inset: 0; z-index: 50; background: #000; pointer-events: none;
+    animation: veil-out 1s ease .1s forwards; }
+  @keyframes veil-out { to { opacity: 0; } }
   .panel {
-    position: fixed; z-index: 3;
-    background: linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.02) 40%, rgba(110,180,255,.06) 100%);
-    border: 1px solid rgba(160, 200, 255, .22);
-    backdrop-filter: blur(18px) saturate(1.5);
-    -webkit-backdrop-filter: blur(18px) saturate(1.5);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 10px 40px rgba(0,0,0,.5);
-    overflow: hidden;
-    border-radius: 22px;
+    position: fixed; z-index: 3; overflow: hidden; border-radius: 18px;
+    background: linear-gradient(150deg, rgba(255,255,255,.09), rgba(255,255,255,.02) 38%, rgba(111,211,255,.05));
+    border: 1px solid rgba(170,205,255,.16);
+    backdrop-filter: blur(24px) saturate(1.7);
+    -webkit-backdrop-filter: blur(24px) saturate(1.7);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.24), inset 0 -1px 0 rgba(0,0,0,.25), 0 18px 50px rgba(0,0,0,.55);
+    animation: panel-in .7s cubic-bezier(.2,.9,.25,1) both;
   }
+  @keyframes panel-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
   #top {
     top: 14px; left: 14px; right: 262px; display: flex; align-items: center;
-    gap: 14px; padding: 10px 18px;
+    gap: 14px; padding: 10px 18px; animation-delay: .05s;
   }
   #top .logo { font-size: 16px; letter-spacing: .18em; font-weight: 700; color: #fff;
-    text-shadow: 0 0 18px rgba(110,180,255,.6); }
+    text-shadow: 0 0 18px rgba(111,211,255,.55); }
   #top .logo em { font-style: normal; color: #6fd3ff; }
-  #top .sub { color: #7b87a3; font-size: 11px; }
-  .chip { margin-left: auto; display: flex; gap: 12px; align-items: center;
-    font-size: 11px; white-space: nowrap; }
-  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%;
-    margin-right: 5px; background: #444; }
+  #top .sub { color: #7b87a3; font-size: 11px; letter-spacing: .04em; }
+  .chip { margin-left: auto; display: flex; gap: 12px; align-items: center; font-size: 11px; white-space: nowrap; }
+  .chip > span { display: inline-flex; align-items: center; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; background: #444; }
   .ok   { color: #43e08a; } .ok .dot   { background: #43e08a; box-shadow: 0 0 10px #43e08a99; }
   .bad  { color: #ff5d6c; } .bad .dot  { background: #ff5d6c; box-shadow: 0 0 10px #ff5d6c99; }
   .warn { color: #ffc857; } .warn .dot { background: #ffc857; box-shadow: 0 0 10px #ffc85799; }
-  #feed {
-    top: 76px; right: 14px; width: 238px; bottom: 16px; padding: 10px 12px;
-    display: flex; flex-direction: column;
-  }
-  #feed h3, #agents h3 {
-    margin: 0 0 8px; font-size: 10px; letter-spacing: .22em; color: #9fb4d8;
-    font-weight: 600;
-  }
+  .dim  { color: #7b87a3; } .dim .dot  { background: #55627e; }
+  #agents { left: 14px; top: 76px; width: 252px; padding: 12px 14px; max-height: 372px;
+    overflow: auto; animation-delay: .12s; }
+  #feed { top: 76px; right: 14px; width: 238px; bottom: 16px; padding: 12px 14px;
+    display: flex; flex-direction: column; animation-delay: .18s; }
+  h3 { margin: 0 0 8px; font-size: 10px; letter-spacing: .22em; color: #9fb4d8; font-weight: 600; }
+  #agentlist { display: flex; flex-direction: column; gap: 2px; }
+  .ag { display: flex; gap: 8px; align-items: center; font-size: 11px; padding: 4px 6px;
+    border-radius: 8px; cursor: default; }
+  .ag:hover, .ag.lit { background: rgba(111,211,255,.09); }
+  .ag .nm { color: #dfe6f3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ag.susp .nm { color: #c9a86a; }
+  .ag .tm { margin-left: auto; color: #66738f; font-size: 10px; white-space: nowrap; }
+  .ag.empty { color: #66738f; padding: 6px; }
   #feedlist { overflow: auto; flex: 1; display: flex; flex-direction: column; gap: 6px; }
-  .ev { font-size: 11px; color: #c4d1e8; border-left: 2px solid #3b6fd4; padding-left: 7px; }
+  .ev { font-size: 11px; color: #c4d1e8; border-left: 2px solid #3b6fd4; padding-left: 8px;
+    padding-block: 2px; border-radius: 2px; cursor: pointer; transition: background .15s; }
+  .ev:hover { background: rgba(111,211,255,.07); }
   .ev.used { border-color: #6fd3ff; }
   .ev.sent { border-color: #ffb14a; }
   .ev.cited, .ev.wrote { border-color: #59f28e; }
   .ev .t { color: #66738f; margin-right: 6px; font-size: 10px; display: block; }
   .ev .who { color: #fff; }
-  #agents { left: 14px; top: 76px; width: 252px; padding: 10px 12px; max-height: 360px; overflow: auto; }
-  .ag { display: flex; gap: 8px; align-items: baseline; font-size: 11px; padding: 2px 0; }
-  .ag .nm { color: #dfe6f3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .ag .tm { margin-left: auto; color: #66738f; font-size: 10px; white-space: nowrap; }
-  #legend { left: 14px; bottom: 14px; padding: 8px 12px; font-size: 10px; color: #9fb4d8; }
-  #legend .sw { display: inline-block; width: 16px; height: 2px; vertical-align: middle; margin-right: 6px;
-    box-shadow: 0 0 6px currentColor; }
+  #dock { left: 14px; bottom: 14px; padding: 10px 14px; font-size: 10px; color: #9fb4d8;
+    animation-delay: .24s; }
+  #dock .row { display: flex; align-items: center; gap: 8px; margin: 3px 0; }
+  #dock .sw { display: inline-block; width: 16px; height: 2px; vertical-align: middle;
+    margin-right: 6px; box-shadow: 0 0 6px currentColor; }
+  #dock hr { border: 0; border-top: 1px solid rgba(170,205,255,.12); margin: 8px 0; }
+  #cyc { display: flex; align-items: center; gap: 10px; }
+  #cyc-n { color: #6fd3ff; font-weight: 600; }
+  #cyc-bar { flex: 1; height: 3px; min-width: 56px; border-radius: 2px;
+    background: rgba(170,205,255,.12); overflow: hidden; }
+  #cyc-bar i { display: block; height: 100%; width: 0;
+    background: linear-gradient(90deg, #3b6fd4, #6fd3ff); box-shadow: 0 0 8px #6fd3ff88; }
+  #cyc-ev { color: #66738f; }
   #hint { position: fixed; z-index: 3; right: 268px; bottom: 16px; color: #5c6a8a; font-size: 10px; }
-  #lost {
-    position: fixed; z-index: 5; top: 0; left: 0; right: 0; display: none;
+  #lost { position: fixed; z-index: 5; top: 0; left: 0; right: 0; display: none;
     background: rgba(59, 18, 32, .9); color: #ffb3bd; text-align: center;
-    padding: 6px; font-size: 12px;
-  }
+    padding: 6px; font-size: 12px; }
   #init-btn {
-    margin-left: 6px; cursor: pointer;
-    background: linear-gradient(135deg, rgba(111,211,255,.18), rgba(111,211,255,.05));
-    border: 1px solid rgba(111,211,255,.45); color: #cdeeff;
+    margin-left: 6px; cursor: pointer; border-radius: 9px;
+    background: linear-gradient(135deg, rgba(111,211,255,.16), rgba(111,211,255,.04));
+    border: 1px solid rgba(111,211,255,.42); color: #cdeeff;
     font: 600 11px ui-monospace, SFMono-Regular, Menlo, monospace;
-    letter-spacing: .06em; padding: 4px 12px; border-radius: 8px;
+    letter-spacing: .06em; padding: 5px 13px;
     transition: background .15s, box-shadow .15s;
   }
-  #init-btn:hover { background: rgba(111,211,255,.28); box-shadow: 0 0 14px rgba(111,211,255,.35); }
-  #modal-backdrop {
-    position: fixed; inset: 0; z-index: 40; display: none;
-    background: rgba(0,0,0,.62);
-    backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
-  }
-  #modal {
-    position: fixed; z-index: 41; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  #init-btn:hover { background: rgba(111,211,255,.26); box-shadow: 0 0 16px rgba(111,211,255,.35); }
+  #modal-backdrop { position: fixed; inset: 0; z-index: 40; display: none;
+    background: rgba(0,0,0,.62); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+  #modal { position: fixed; z-index: 41; top: 50%; left: 50%; transform: translate(-50%,-50%);
     width: min(700px, calc(100vw - 40px)); max-height: 86vh; overflow: auto;
-    display: none; padding: 20px 22px;
-  }
+    display: none; padding: 22px 24px; }
   #modal h2 { margin: 0 0 4px; font-size: 14px; letter-spacing: .14em; color: #fff; }
   #modal .sub { color: #7b87a3; font-size: 11px; margin-bottom: 14px; }
   #modal label { display: block; font-size: 10px; letter-spacing: .16em; color: #9fb4d8; margin: 12px 0 4px; }
   #modal input[type=text] {
-    width: 100%; box-sizing: border-box; background: rgba(0,0,0,.35);
-    border: 1px solid rgba(160,200,255,.25); border-radius: 8px; color: #dfe6f3;
-    font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; padding: 7px 10px;
+    width: 100%; box-sizing: border-box; background: rgba(0,0,0,.38);
+    border: 1px solid rgba(160,200,255,.22); border-radius: 9px; color: #dfe6f3;
+    font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; padding: 8px 11px;
+    transition: border-color .15s, box-shadow .15s;
   }
-  #modal input[type=text]:focus { outline: none; border-color: rgba(111,211,255,.6); }
+  #modal input[type=text]:focus { outline: none; border-color: rgba(111,211,255,.6);
+    box-shadow: 0 0 14px rgba(111,211,255,.18); }
   #modal .row { display: flex; gap: 10px; }
   #modal .row > div { flex: 1; }
   #modal-actions { display: flex; gap: 10px; margin-top: 18px; align-items: center; }
-  #modal-actions button {
-    cursor: pointer; border-radius: 8px; padding: 8px 16px;
-    font: 600 12px ui-monospace, SFMono-Regular, Menlo, monospace;
-  }
+  #modal-actions button { cursor: pointer; border-radius: 9px; padding: 8px 16px;
+    font: 600 12px ui-monospace, SFMono-Regular, Menlo, monospace; }
   #init-submit { background: linear-gradient(135deg,#39d98a,#1f9e5f); border: 1px solid #39d98a; color: #04120b; }
-  #init-submit:hover { box-shadow: 0 0 16px rgba(57,217,138,.4); }
+  #init-submit:hover { box-shadow: 0 0 18px rgba(57,217,138,.4); }
   #init-submit:disabled { opacity: .5; cursor: default; box-shadow: none; }
-  #modal-cancel { background: transparent; border: 1px solid rgba(160,200,255,.3); color: #9fb4d8; }
+  #modal-cancel { background: transparent; border: 1px solid rgba(160,200,255,.28); color: #9fb4d8; }
   #modal-err { color: #ff5d6c; font-size: 11px; margin-top: 12px; min-height: 14px; white-space: pre-wrap; word-break: break-word; }
   #modal-done { display: none; }
   #modal-done .once {
     background: rgba(255,180,74,.1); border: 1px solid rgba(255,180,74,.5);
-    border-radius: 8px; padding: 8px 10px; font-size: 11px; color: #ffcf94; margin-bottom: 12px;
+    border-radius: 9px; padding: 8px 11px; font-size: 11px; color: #ffcf94; margin-bottom: 12px;
   }
   #modal-done .key {
     font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; color: #7cf2b0;
     word-break: break-all; background: rgba(0,0,0,.4); border: 1px solid rgba(124,242,176,.3);
-    border-radius: 8px; padding: 10px; margin: 6px 0;
+    border-radius: 9px; padding: 10px; margin: 6px 0;
   }
   #modal-done textarea {
     width: 100%; box-sizing: border-box; height: 220px; resize: vertical;
-    background: rgba(0,0,0,.4); border: 1px solid rgba(160,200,255,.25); border-radius: 8px;
+    background: rgba(0,0,0,.4); border: 1px solid rgba(160,200,255,.22); border-radius: 9px;
     color: #c4d1e8; font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; padding: 10px;
   }
-  .copy {
-    cursor: pointer; background: transparent; border: 1px solid rgba(160,200,255,.35);
+  .copy { cursor: pointer; background: transparent; border: 1px solid rgba(160,200,255,.32);
     color: #cdeeff; font: 600 10px ui-monospace, SFMono-Regular, Menlo, monospace;
-    letter-spacing: .08em; padding: 4px 10px; border-radius: 7px;
+    letter-spacing: .08em; padding: 4px 10px; border-radius: 7px; }
+  .copy:hover { background: rgba(111,211,255,.16); }
+  @media (max-width: 900px) {
+    #top { right: 190px; }
+    #feed { width: 170px; }
+    #agents { width: 200px; max-height: 240px; }
+    #hint { display: none; }
+    .chip { gap: 8px; font-size: 10px; }
   }
-  .copy:hover { background: rgba(111,211,255,.18); }
+  @media (prefers-reduced-motion: reduce) {
+    .neb, .panel, #veil { animation: none !important; }
+    #veil { opacity: 0; }
+  }
 </style>
 </head>
 <body>
-<div id="bg"></div>
+<div id="bg"><div class="neb neb-a"></div><div class="neb neb-b"></div><div class="neb neb-c"></div></div>
 <canvas id="c"></canvas>
+<div id="vig"></div>
+<div id="dither"></div>
+<div id="veil"></div>
 <div id="lost">connection lost — reconnecting…</div>
-<div id="top" class="panel">
+<header id="top" class="panel">
   <span class="logo">MEM<em>EX</em></span>
-  <span class="sub">agent neural network · live telemetry</span>
+  <span class="sub">agent inference network · live</span>
   <button id="init-btn" title="Create a new agent and get its key">+ INIT AGENT</button>
   <span class="chip">
     <span id="ch-db" class="warn"><span class="dot"></span>db …</span>
     <span id="ch-emb" class="warn"><span class="dot"></span>embedder …</span>
     <span id="ch-sse" class="warn"><span class="dot"></span>streams …</span>
+    <span id="ch-notes" class="dim"><span class="dot"></span>notes …</span>
   </span>
+</header>
+<aside id="agents" class="panel"><h3>AGENTS</h3><div id="agentlist"></div></aside>
+<aside id="feed" class="panel"><h3>ACTIVITY</h3><div id="feedlist"></div></aside>
+<div id="dock" class="panel">
+  <div class="row" style="color:#6fd3ff"><span class="sw" style="background:#6fd3ff"></span>used a note</div>
+  <div class="row" style="color:#ffb14a"><span class="sw" style="background:#ffb14a"></span>sent a DM</div>
+  <div class="row" style="color:#59f28e"><span class="sw" style="background:#59f28e"></span>wrote / cited</div>
+  <hr>
+  <div id="cyc">
+    <span>INFERENCE <span id="cyc-n">0</span></span>
+    <span id="cyc-bar"><i></i></span>
+    <span id="cyc-ev">listening</span>
+  </div>
 </div>
-<div id="agents" class="panel"><h3>AGENTS</h3><div id="agentlist"></div></div>
-<div id="feed" class="panel"><h3>ACTIVITY</h3><div id="feedlist"></div></div>
+<div id="hint">drag to orbit · scroll to zoom · hover a node · click to focus</div>
 <div id="modal-backdrop"></div>
 <div id="modal" class="panel">
   <h2>INITIALIZE AGENT</h2>
@@ -202,101 +248,38 @@
     </div>
   </div>
 </div>
-<div id="legend" class="panel">
-  <div style="color:#6fd3ff"><span class="sw" style="background:#6fd3ff"></span>used a note</div>
-  <div style="color:#ffb14a"><span class="sw" style="background:#ffb14a"></span>sent a DM</div>
-  <div style="color:#59f28e"><span class="sw" style="background:#59f28e"></span>wrote / cited</div>
-</div>
-<div id="hint">drag to orbit · scroll to zoom · pulses travel on live links</div>
 <script>
 "use strict";
+/* ============ canvas ============ */
 const cv = document.getElementById('c');
 const ctx = cv.getContext('2d');
 let W = 0, H = 0, DPR = 1;
 function resize() {
-  DPR = devicePixelRatio || 1;
-  W = cv.width = innerWidth * DPR;
-  H = cv.height = innerHeight * DPR;
+  DPR = Math.min(devicePixelRatio || 1, 2);
+  W = cv.width = Math.round(innerWidth * DPR);
+  H = cv.height = Math.round(innerHeight * DPR);
   cv.style.width = innerWidth + 'px';
   cv.style.height = innerHeight + 'px';
 }
 addEventListener('resize', resize);
 resize();
 
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ============ math ============ */
 function rand(n) { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
 function nrm(v) { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0]/l, v[1]/l, v[2]/l]; }
 function add(a, b, s) { return [a[0]+b[0]*s, a[1]+b[1]*s, a[2]+b[2]*s]; }
 function cross(a, b) { return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]; }
-const TAU = Math.PI * 2;
-const BALL = [12.6, 9.4, 11.4];
+function clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
 function mix3(a, b, t) { return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t]; }
-const RED = [1.0, 0.22, 0.08], AMBER = [1.0, 0.48, 0.14], GREEN = [0.28, 0.86, 0.52],
-      TEAL = [0.18, 0.78, 0.92], BLUE = [0.22, 0.42, 1.0];
-function strandColor(t, green) {
-  if (t < 0.18) return mix3(RED, AMBER, t / 0.18);
-  if (t < 0.50) return mix3(AMBER, green ? GREEN : TEAL, (t - 0.18) / 0.32);
-  return mix3(green ? GREEN : TEAL, BLUE, Math.min(1, (t - 0.50) / 0.50));
+function cubic(A, B, C, D, u) {
+  const w0 = (1-u)*(1-u)*(1-u), w1 = 3*(1-u)*(1-u)*u, w2 = 3*(1-u)*u*u, w3 = u*u*u;
+  return [w0*A[0]+w1*B[0]+w2*C[0]+w3*D[0], w0*A[1]+w1*B[1]+w2*C[1]+w3*D[1], w0*A[2]+w1*B[2]+w2*C[2]+w3*D[2]];
 }
-function clampUnit(p, maxR) {
-  const r = Math.hypot(p[0], p[1], p[2]);
-  if (r <= maxR) return p;
-  const s = maxR / r;
-  return [p[0] * s, p[1] * s, p[2] * s];
-}
-function toWorld(p) { return [p[0] * BALL[0], p[1] * BALL[1], p[2] * BALL[2]]; }
-function unitR(p) { return Math.hypot(p[0] / BALL[0], p[1] / BALL[1], p[2] / BALL[2]); }
+const TAU = Math.PI * 2;
 
-const strands = [];
-const lights = [];
-const MAX_STRANDS = 1400;
-function grow(seed, pos, dir, depth, maxDepth, hang, green) {
-  if (strands.length >= MAX_STRANDS) return;
-  const segs = 8 + (depth === 0 ? 6 : 0);
-  const len = (0.34 - depth * 0.04) * (0.72 + rand(seed + 3) * 0.55);
-  const pts = [toWorld(pos)];
-  let p = pos.slice(), d = dir.slice();
-  const perp = nrm(cross(d, Math.abs(d[1]) > 0.8 ? [1, 0, 0] : [0, 1, 0]));
-  const bin = nrm(cross(d, perp));
-  const w1 = 0.9 + rand(seed + 5) * 1.8, ph = rand(seed + 7) * TAU;
-  const amp = 0.12 + rand(seed + 9) * 0.18;
-  const cap = hang ? 1.18 : 0.995;
-  for (let j = 1; j <= segs; j++) {
-    const t = j / segs;
-    d = nrm(add(d, add(perp, bin, Math.sin(t * w1 * TAU + ph) * amp), 0.18));
-    p = add(p, d, len / segs);
-    p = clampUnit(p, cap);
-    pts.push(toWorld(p));
-  }
-  const endR = Math.min(1, Math.hypot(p[0], p[1], p[2]));
-  strands.push({ pts, endR, depth, green: !!green });
-  if (rand(seed + 11) > 0.62) {
-    const mid = pts[Math.floor(pts.length * (0.45 + rand(seed + 13) * 0.4))];
-    lights.push({ p: mid, r: endR, ph: rand(seed + 17) * TAU, green: !!green });
-  }
-  if (depth >= maxDepth) return;
-  const splits = depth < 2 ? 2 : (rand(seed + 19) > 0.35 ? 2 : 1);
-  for (let k = 0; k < splits; k++) {
-    const yaw = (rand(seed + 23 + k) - 0.5) * 1.05;
-    const pit = (rand(seed + 29 + k) - 0.5) * 0.85;
-    const nd = nrm(add(add(d, perp, yaw), bin, pit));
-    grow(seed * 1.7 + k * 97 + depth * 13, p, nd, depth + 1, maxDepth, hang, green);
-  }
-}
-(function buildBrain() {
-  for (let i = 0; i < 56; i++) {
-    const u = rand(i * 3 + 1) * 2 - 1, ph = rand(i * 5 + 2) * TAU, s = Math.sqrt(1 - u * u);
-    const dir = nrm([s * Math.cos(ph), u * 0.78, s * Math.sin(ph)]);
-    const startR = 0.06 + rand(i * 11) * 0.08;
-    const start = [dir[0] * startR, dir[1] * startR, dir[2] * startR];
-    grow(i + 1, start, dir, 0, 4, false, i % 13 === 0);
-  }
-  for (let i = 0; i < 14; i++) {
-    const ph = rand(i * 41 + 3) * TAU;
-    const dir = nrm([Math.cos(ph) * 0.4, -0.92 - rand(i * 43) * 0.12, Math.sin(ph) * 0.4]);
-    grow(900 + i, [dir[0] * 0.1, -0.18, dir[2] * 0.1], dir, 0, 2, true, false);
-  }
-})();
-
+/* ============ stars ============ */
 const stars = [];
 for (let i = 0; i < 420; i++) {
   const u = rand(i + 900) * 2 - 1, ph = rand(i + 700) * TAU;
@@ -304,57 +287,139 @@ for (let i = 0; i < 420; i++) {
   stars.push([r * s * Math.cos(ph) * 1.35, r * u * 1.1, r * s * Math.sin(ph) * 1.35, 0.4 + rand(i) * 1.1, rand(i + 300) * TAU]);
 }
 
+/* ============ network state ============ */
 let nodes = [], edges = [];
-let nodePos = new Map(), nodeMeta = new Map(), nodeExcite = new Map(), nodeBase = new Map(), nodeExciteColor = new Map();
+const nodePos = new Map(), nodeMeta = new Map(), nodeExcite = new Map(), nodeBase = new Map(), nodeExciteColor = new Map();
+const seenIds = new Set();
 let edgeObjs = [];
+let flows = [];
+let coreFlash = 0, globalBoost = 0;
+let waves = [], shocks = [];
+let hoverID = null, selectID = null, selectUntil = 0;
+const screenPos = new Map();
+
 const KIND_COLOR = { used: [0.40, 0.68, 1.0], sent: [1.0, 0.62, 0.22], cited: [0.32, 0.90, 0.55], wrote: [0.32, 0.90, 0.55] };
 const KIND_SPEED = { used: 0.16, sent: 0.38, cited: 0.24, wrote: 0.2 };
+const HUB_COLOR = { read: [0.40, 0.75, 1.00], write: [0.30, 0.90, 0.55] };
+const rgba = (c, a) => 'rgba(' + Math.round(c[0] * 255) + ',' + Math.round(c[1] * 255) + ',' + Math.round(c[2] * 255) + ',' + clamp(a, 0, 1).toFixed(3) + ')';
+const edgeKey = e => e.from + '|' + e.to + '|' + (e.kind || 'used');
+const RW = [9, 7, 8.5];
 
 function layout() {
-  nodePos = new Map(); nodeMeta = new Map();
+  nodePos.clear(); nodeMeta.clear();
   const n = nodes.length;
   const golden = Math.PI * (3 - Math.sqrt(5));
   nodes.forEach((nd, i) => {
     const y = n === 1 ? 0 : 1 - (i / (n - 1)) * 2;
     const r = Math.sqrt(Math.max(0, 1 - y * y));
-    const th = golden * i + rand(i) * 0.4;
-    const rad = 0.28 + rand(i + 40) * 0.55;
-    const x = Math.cos(th) * r * rad * BALL[0];
-    const yy = y * rad * BALL[1];
-    const z = Math.sin(th) * r * rad * BALL[2];
+    const th = golden * i + rand(i) * 0.35;
+    const x = Math.cos(th) * r * RW[0];
+    const yy = y * RW[1];
+    const z = Math.sin(th) * r * RW[2];
     nodePos.set(nd.id, [x, yy, z]);
     nodeMeta.set(nd.id, { pos: [x, yy, z], name: nd.name, active: nd.status === 'active' });
+    if (!seenIds.has(nd.id)) { seenIds.add(nd.id); nodeExcite.set(nd.id, 1.8); shock(nd.id); }
   });
+  const live = new Set(nodes.map(nd => nd.id));
+  for (const id of [...nodeExcite.keys()]) if (!live.has(id)) { nodeExcite.delete(id); nodeBase.delete(id); nodeExciteColor.delete(id); }
+  buildEdges();
+  buildFlows();
+}
+function buildEdges() {
+  const old = new Map(edgeObjs.map(o => [o.from + '|' + o.to + '|' + o.kind, o]));
   edgeObjs = [];
   edges.forEach((e, i) => {
     const A = nodePos.get(e.from), B = nodePos.get(e.to);
     if (!A || !B) return;
     const mid = [(A[0]+B[0])/2, (A[1]+B[1])/2, (A[2]+B[2])/2];
-    let nrmv = nrm(cross([B[0]-A[0], B[1]-A[1], B[2]-A[2]], [0, 1, 0.3]));
+    const nrmv = nrm(cross([B[0]-A[0], B[1]-A[1], B[2]-A[2]], [0, 1, 0.3]));
     const off = (Math.hypot(B[0]-A[0], B[1]-A[1], B[2]-A[2]) * 0.18 + 0.8) * (rand(i * 61) > 0.5 ? 1 : -1);
     const C = [mid[0]+nrmv[0]*off, mid[1]+nrmv[1]*off, mid[2]+nrmv[2]*off];
-    const pulses = [];
-    const np = 1 + (e.kind === 'sent' ? 1 : 0);
-    for (let k = 0; k < np; k++) pulses.push({ seed: rand(i * 67 + k), speed: KIND_SPEED[e.kind] || 0.2 });
-    edgeObjs.push({ A, C, B, kind: e.kind || 'used', f: Math.min((e.count || 1) / 8, 1), act: 0, rest: 0, pulses, from: e.from, to: e.to });
+    const prev = old.get(e.from + '|' + e.to + '|' + (e.kind || 'used'));
+    edgeObjs.push({ A, C, B, kind: e.kind || 'used', f: Math.min((e.count || 1) / 8, 1),
+      act: prev ? prev.act : 0, rest: prev ? prev.rest : 0, from: e.from, to: e.to });
   });
 }
-function qbez(A, C, B, u) {
-  const w0 = (1-u)*(1-u), w1 = 2*(1-u)*u, w2 = u*u;
-  return [w0*A[0]+w1*C[0]+w2*B[0], w0*A[1]+w1*C[1]+w2*B[1], w0*A[2]+w1*C[2]+w2*B[2]];
+function buildFlows() {
+  flows = [];
+  /* hub flows: core <-> each agent (2 reads core->agent, 1 write agent->core) */
+  nodes.forEach((nd, i) => {
+    const P = nodePos.get(nd.id);
+    const L = Math.hypot(P[0], P[1], P[2]) || 1;
+    const dir = [P[0]/L, P[1]/L, P[2]/L];
+    const ref = Math.abs(dir[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0];
+    const u1 = nrm(cross(dir, ref));
+    const u2 = cross(dir, u1);
+    for (let j = 0; j < 3; j++) {
+      const ang = (j / 3) * TAU + rand(i * 31 + j * 7 + 3) * 0.9;
+      const px = u1[0] * Math.cos(ang) + u2[0] * Math.sin(ang);
+      const py = u1[1] * Math.cos(ang) + u2[1] * Math.sin(ang);
+      const pz = u1[2] * Math.cos(ang) + u2[2] * Math.sin(ang);
+      const spread = L * (0.10 + rand(i * 31 + j * 13 + 5) * 0.12);
+      const toCore = j === 1;
+      flows.push({
+        type: 'hub', nodeId: nd.id,
+        P0: toCore ? P.slice() : [0, 0, 0],
+        P1: [dir[0]*L*0.35 + px*spread, dir[1]*L*0.35 + py*spread, dir[2]*L*0.35 + pz*spread],
+        P2: [dir[0]*L*0.80 + px*spread*1.8, dir[1]*L*0.80 + py*spread*1.8, dir[2]*L*0.80 + pz*spread*1.8],
+        P3: toCore ? [0, 0, 0] : P.slice(),
+        color: toCore ? HUB_COLOR.write : HUB_COLOR.read,
+        t: rand(i * 31 + j * 17 + 9),
+        speed: (toCore ? 0.16 : 0.13) + rand(i * 31 + j * 23 + 11) * 0.07,
+        burst: 0,
+      });
+    }
+  });
+  /* edge flows: agent <-> agent along graph edges */
+  for (const eo of edgeObjs) {
+    const A = eo.A, B = eo.B, C = eo.C;
+    flows.push({
+      type: 'edge', eo,
+      P0: A.slice(),
+      P1: [A[0] + (C[0]-A[0]) * 2/3, A[1] + (C[1]-A[1]) * 2/3, A[2] + (C[2]-A[2]) * 2/3],
+      P2: [B[0] + (C[0]-B[0]) * 2/3, B[1] + (C[1]-B[1]) * 2/3, B[2] + (C[2]-B[2]) * 2/3],
+      P3: B.slice(),
+      color: KIND_COLOR[eo.kind] || KIND_COLOR.used,
+      t: rand((eo.from.length + eo.to.length) * 7 + eo.kind.length * 13 + eo.from.length),
+      speed: KIND_SPEED[eo.kind] || 0.2,
+      burst: 0,
+    });
+  }
+  /* ambient flows: far field converging on the core */
+  for (let i = 0; i < 28; i++) {
+    const u = rand(i + 400) * 2 - 1, ph = rand(i + 500) * TAU, s = Math.sqrt(1 - u * u);
+    const R = 55 + rand(i + 600) * 30;
+    const A = [s * Math.cos(ph) * R * 1.3, u * R, s * Math.sin(ph) * R * 1.3];
+    const d = nrm(A);
+    const pref = Math.abs(d[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0];
+    const per = nrm(cross(d, pref));
+    const bulge = (rand(i + 700) - 0.5) * 14;
+    flows.push({
+      type: 'amb',
+      P0: A,
+      P1: [d[0]*R*0.62 + per[0]*bulge, d[1]*R*0.62 + per[1]*bulge, d[2]*R*0.62 + per[2]*bulge],
+      P2: [d[0]*R*0.24, d[1]*R*0.24, d[2]*R*0.24],
+      P3: [0, 0, 0],
+      color: [0.65, 0.78, 0.95],
+      t: rand(i + 800),
+      speed: 0.05 + rand(i + 900) * 0.05,
+      burst: 0,
+    });
+  }
 }
 
-let camT = { az: 0.85, el: 0.12, r: 23 }, cam = { az: 0.85, el: 0.12, r: 23 };
+/* ============ camera ============ */
+let camT = { az: 0.85, el: 0.12, r: 31 }, cam = { az: 0.85, el: 0.12, r: 48 };
 let dragging = false, lx = 0, ly = 0;
 cv.addEventListener('mousedown', e => { dragging = true; lx = e.clientX; ly = e.clientY; });
 addEventListener('mouseup', () => dragging = false);
 addEventListener('mousemove', e => {
   if (!dragging) return;
   camT.az -= (e.clientX - lx) * 0.005;
-  camT.el = Math.max(-1.25, Math.min(1.25, camT.el + (e.clientY - ly) * 0.005));
+  camT.el = clamp(camT.el + (e.clientY - ly) * 0.005, -1.25, 1.25);
   lx = e.clientX; ly = e.clientY;
 });
-addEventListener('wheel', e => { camT.r = Math.max(18, Math.min(70, camT.r + e.deltaY * 0.02)); }, { passive: true });
+addEventListener('wheel', e => { camT.r = clamp(camT.r + e.deltaY * 0.02, 16, 58); }, { passive: true });
 
 function lookBasis() {
   const ca = Math.cos(cam.az), sa = Math.sin(cam.az), ce = Math.cos(cam.el), se = Math.sin(cam.el);
@@ -373,101 +438,177 @@ function project(x, y, z, basis) {
   const cy = dx * basis.u[0] + dy * basis.u[1] + dz * basis.u[2];
   const depth = dx * basis.f[0] + dy * basis.f[1] + dz * basis.f[2];
   const d = Math.max(0.4, depth);
-  const f = Math.min(W, H) * 1.25;
-  return [W / 2 + (cx * f) / d, H / 2 - (cy * f) / d, d];
+  const fl = Math.min(W, H) * 1.25;
+  return [W / 2 + (cx * fl) / d, H / 2 - (cy * fl) / d, d];
 }
 
+/* ============ effects ============ */
+function shock(id) {
+  if (id && nodePos.has(id) && shocks.length < 40) shocks.push({ id, t0: performance.now() });
+}
+function wave() { if (waves.length < 4) waves.push({ t0: performance.now() }); }
+function burstNode(id, amt) {
+  for (const fl of flows) if (fl.type === 'hub' && fl.nodeId === id) fl.burst = Math.max(fl.burst, amt);
+}
+function flashEdge(from, to, amount, color) {
+  const amp = amount == null ? 1.0 : amount;
+  let hit = false;
+  for (const eo of edgeObjs) {
+    if ((eo.from === from && eo.to === to) || (eo.from === to && eo.to === from)) {
+      eo.act = Math.min(1.8, eo.act + amp);
+      hit = true;
+      for (const fl of flows) {
+        if (fl.type === 'edge' && fl.eo === eo) fl.burst = Math.max(fl.burst, Math.min(1.4, amp));
+      }
+    }
+  }
+  if (from) {
+    nodeExcite.set(from, Math.min(2.5, (nodeExcite.get(from) || 0) + amp));
+    if (color) nodeExciteColor.set(from, [Math.round(color[0]*255), Math.round(color[1]*255), Math.round(color[2]*255)]);
+  }
+  if (to) {
+    nodeExcite.set(to, Math.min(2.5, (nodeExcite.get(to) || 0) + amp * 0.85));
+    if (color) nodeExciteColor.set(to, [Math.round(color[0]*255), Math.round(color[1]*255), Math.round(color[2]*255)]);
+  }
+  return hit;
+}
+function onArrive(fl) {
+  if (fl.type === 'amb') return;
+  if (fl.type === 'hub') {
+    if (fl.P3[0] === 0 && fl.P3[1] === 0 && fl.P3[2] === 0) coreFlash = Math.min(1.6, coreFlash + 0.3);
+    else nodeExcite.set(fl.nodeId, Math.min(2.5, (nodeExcite.get(fl.nodeId) || 0) + 0.16));
+  } else {
+    nodeExcite.set(fl.eo.to, Math.min(2.5, (nodeExcite.get(fl.eo.to) || 0) + 0.2));
+  }
+}
+
+/* ============ render loop ============ */
 const t0 = performance.now();
-let lastT = t0;
+let lastT = t0, cycleStart = t0, cycleN = 0;
+const POLL_MS = 3000;
+const cycBarI = document.querySelector('#cyc-bar i');
+
 function frame() {
   const now = performance.now();
   const dt = Math.min(0.05, (now - lastT) / 1000);
   lastT = now;
   const t = (now - t0) / 1000;
-  if (!dragging) camT.az += 0.00055;
+  if (!dragging && !RM) camT.az += 0.0006;
   cam.az += (camT.az - cam.az) * 0.08;
   cam.el += (camT.el - cam.el) * 0.08;
   cam.r += (camT.r - cam.r) * 0.08;
   for (const eo of edgeObjs) eo.act *= Math.exp(-dt * 0.9);
   for (const [id, e] of nodeExcite) nodeExcite.set(id, e * Math.exp(-dt * 1.4));
+  coreFlash *= Math.exp(-dt * 1.7);
+  globalBoost *= Math.exp(-dt * 1.1);
+  if (selectID && now >= selectUntil) selectID = null;
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, W, H);
   const basis = lookBasis();
+  const selOn = selectID && now < selectUntil;
 
+  /* stars */
   for (const st of stars) {
     const [px, py, d] = project(st[0], st[1], st[2], basis);
     if (d < 1) continue;
-    const a = (0.35 + 0.45 * Math.sin(t * 0.7 + st[4])) * Math.max(0, 0.85 - d / 180);
+    const a = (RM ? 0.6 : 0.35 + 0.45 * Math.sin(t * 0.7 + st[4])) * Math.max(0, 0.85 - d / 180);
+    if (a <= 0.02) continue;
     ctx.fillStyle = 'rgba(120,180,230,' + a.toFixed(3) + ')';
     const r = Math.max(0.6, st[3] * (Math.min(W, H) / d) * 0.04);
     ctx.fillRect(px, py, r, r);
   }
 
+  /* flows: dashed curves + traveling particles — the network IS the animation */
   ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  for (const sd of strands) {
-    for (let i = 1; i < sd.pts.length; i++) {
-      const a = sd.pts[i - 1], b = sd.pts[i];
-      const t = Math.min(1, (unitR(a) + unitR(b)) * 0.5);
-      const c = strandColor(t, sd.green);
-      const alpha = 0.16 + 0.38 * t;
-      ctx.strokeStyle = 'rgba(' + Math.round(c[0]*255) + ',' + Math.round(c[1]*255) + ',' + Math.round(c[2]*255) + ',' + alpha.toFixed(3) + ')';
-      ctx.lineWidth = Math.max(0.35, (0.55 + 0.35 * (1 - t) - sd.depth * 0.04) * DPR);
-      ctx.beginPath();
-      const p0 = project(a[0], a[1], a[2], basis);
-      const p1 = project(b[0], b[1], b[2], basis);
-      if (p0[2] < 0.6 || p1[2] < 0.6) continue;
-      ctx.moveTo(p0[0], p0[1]);
-      ctx.lineTo(p1[0], p1[1]);
-      ctx.stroke();
+  for (const fl of flows) {
+    const isEdge = fl.type === 'edge';
+    const isAmb = fl.type === 'amb';
+    const glow = isEdge ? Math.min(1.6, fl.eo.act + fl.eo.rest + fl.eo.f) : 0;
+    if (fl.burst > 0.01) fl.burst *= Math.exp(-dt * 1.3); else fl.burst = 0;
+    let em = 1;
+    if (hoverID || selOn) {
+      const touch = isEdge
+        ? (fl.eo.from === hoverID || fl.eo.to === hoverID || (selOn && (fl.eo.from === selectID || fl.eo.to === selectID)))
+        : (isAmb ? false : (fl.nodeId === hoverID || (selOn && fl.nodeId === selectID)));
+      em = touch ? 1.9 : (isAmb ? 0.5 : 0.4);
     }
+    let a = (isAmb ? 0.07 : fl.type === 'hub' ? 0.22 : 0.24 + 0.4 * Math.min(1.4, glow)) * em
+      + fl.burst * 0.35 + globalBoost * 0.2;
+    a = Math.min(1, a);
+    const path = new Path2D();
+    for (let j = 0; j <= 22; j++) {
+      const p = cubic(fl.P0, fl.P1, fl.P2, fl.P3, j / 22);
+      const pr = project(p[0], p[1], p[2], basis);
+      if (j === 0) path.moveTo(pr[0], pr[1]); else path.lineTo(pr[0], pr[1]);
+    }
+    if (isEdge && glow > 0.45) {
+      ctx.setLineDash([]);
+      ctx.strokeStyle = rgba(fl.color, (0.05 + 0.13 * Math.min(1.4, glow)) * em);
+      ctx.lineWidth = (2.2 + 3 * Math.min(1.4, glow)) * DPR;
+      ctx.stroke(path);
+    }
+    ctx.setLineDash([2 * DPR, 5 * DPR]);
+    ctx.strokeStyle = rgba(fl.color, a);
+    ctx.lineWidth = (isAmb ? 0.7 : fl.type === 'hub' ? 0.9 : 0.9 + 0.9 * Math.min(1.3, glow)) * DPR;
+    ctx.stroke(path);
+    ctx.setLineDash([]);
+    /* particles */
+    const u = fl.t;
+    for (let g = 2; g >= 0; g--) {
+      const uu = u - g * 0.05;
+      if (uu < 0) continue;
+      const p = cubic(fl.P0, fl.P1, fl.P2, fl.P3, uu);
+      const pr = project(p[0], p[1], p[2], basis);
+      if (pr[2] < 1) continue;
+      const b = (g === 0 ? 0.85 : g === 1 ? 0.4 : 0.18) * (isAmb ? 0.55 : 1) * em;
+      ctx.fillStyle = rgba(fl.color, Math.min(1, b + fl.burst * 0.3));
+      const rr = (isAmb ? 0.55 : 1) * clamp(180 / pr[2], 1.2, 9) * (g ? 0.6 : 1);
+      ctx.beginPath(); ctx.arc(pr[0], pr[1], rr, 0, TAU); ctx.fill();
+    }
+    fl.t += dt * fl.speed * (1 + Math.min(2, glow + fl.burst) * 0.7);
+    if (fl.t >= 1) { fl.t -= 1; onArrive(fl); }
   }
 
-  for (const tl of lights) {
-    const [px, py, d] = project(tl.p[0], tl.p[1], tl.p[2], basis);
-    if (d < 1) continue;
-    const tw = 0.45 + 0.5 * Math.sin(t * 0.9 + tl.ph);
-    const c = strandColor(Math.min(1, tl.r), tl.green);
-    ctx.fillStyle = 'rgba(' + Math.round(c[0]*255) + ',' + Math.round(c[1]*255) + ',' + Math.round(c[2]*255) + ',' + (tw * 0.85).toFixed(2) + ')';
-    ctx.beginPath(); ctx.arc(px, py, Math.max(0.7, 18 / d), 0, TAU); ctx.fill();
-  }
-
+  /* core hub — the convergence point */
   const core = project(0, 0, 0, basis);
   if (core[2] > 0.6) {
-    const size = 6 * (24 / core[2]);
-    const g = ctx.createRadialGradient(core[0], core[1], 0, core[0], core[1], size * 4);
-    g.addColorStop(0, 'rgba(255,210,140,0.95)');
-    g.addColorStop(0.25, 'rgba(255,110,40,0.55)');
+    const size = (4.6 + (RM ? 0 : Math.sin(t * 1.3) * 0.6) + coreFlash * 2.8 + globalBoost * 1.6) * (24 / core[2]);
+    const g = ctx.createRadialGradient(core[0], core[1], 0, core[0], core[1], size * 4.4);
+    g.addColorStop(0, 'rgba(255,224,170,0.95)');
+    g.addColorStop(0.24, 'rgba(255,140,60,' + (0.5 + coreFlash * 0.3).toFixed(2) + ')');
     g.addColorStop(1, 'rgba(255,80,20,0)');
     ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(core[0], core[1], size * 4, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(core[0], core[1], size * 4.4, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(255,244,220,0.9)';
+    ctx.beginPath(); ctx.arc(core[0], core[1], size * 0.5, 0, TAU); ctx.fill();
   }
 
-  for (const eo of edgeObjs) {
-    const c = KIND_COLOR[eo.kind] || KIND_COLOR.used;
-    const glow = Math.min(1.6, eo.act + eo.rest + eo.f);
-    const a = 0.18 + 0.55 * glow;
-    ctx.strokeStyle = 'rgba(' + Math.round(c[0]*255) + ',' + Math.round(c[1]*255) + ',' + Math.round(c[2]*255) + ',' + a.toFixed(2) + ')';
-    ctx.lineWidth = Math.max(0.8, (1.0 + glow) * DPR);
-    ctx.beginPath();
-    for (let j = 0; j <= 16; j++) {
-      const p = qbez(eo.A, eo.C, eo.B, j / 16);
-      const [px, py] = project(p[0], p[1], p[2], basis);
-      if (j === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-    }
-    ctx.stroke();
-    for (const pu of eo.pulses) {
-      const u = (t * pu.speed + pu.seed) % 1;
-      const p = qbez(eo.A, eo.C, eo.B, u);
-      const [px, py, d] = project(p[0], p[1], p[2], basis);
-      if (d < 1) continue;
-      const b = 0.35 + 0.65 * glow;
-      ctx.fillStyle = 'rgba(' + Math.round(c[0]*255) + ',' + Math.round(c[1]*255) + ',' + Math.round(c[2]*255) + ',' + b.toFixed(2) + ')';
-      ctx.beginPath(); ctx.arc(px, py, Math.max(1.4, 26 / d * b), 0, TAU); ctx.fill();
-    }
+  /* inference waves */
+  for (let i = waves.length - 1; i >= 0; i--) {
+    const wv = waves[i], u = (now - wv.t0) / 1500;
+    if (u >= 1) { waves.splice(i, 1); continue; }
+    const r = Math.max(0.1, u * Math.min(W, H) * 0.62 * (24 / Math.max(12, core[2])));
+    ctx.strokeStyle = 'rgba(111,211,255,' + (0.4 * (1 - u)).toFixed(3) + ')';
+    ctx.lineWidth = (2.5 * (1 - u) + 0.5) * DPR;
+    ctx.beginPath(); ctx.arc(core[0], core[1], r, 0, TAU); ctx.stroke();
   }
 
+  /* shockwaves */
+  for (let i = shocks.length - 1; i >= 0; i--) {
+    const s = shocks[i], u = (now - s.t0) / 900;
+    if (u >= 1) { shocks.splice(i, 1); continue; }
+    const m = nodeMeta.get(s.id);
+    if (!m) continue;
+    const [px, py, d] = project(m.pos[0], m.pos[1], m.pos[2], basis);
+    if (d < 1) continue;
+    ctx.strokeStyle = 'rgba(255,255,255,' + (0.55 * (1 - u)).toFixed(3) + ')';
+    ctx.lineWidth = (2 * (1 - u) + 0.4) * DPR;
+    ctx.beginPath(); ctx.arc(px, py, (22 / d) * u * 6 + 2, 0, TAU); ctx.stroke();
+  }
+
+  /* agent nodes — endpoints of the flows */
+  screenPos.clear();
   ctx.font = (11 * DPR) + 'px ui-monospace, Menlo, monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
@@ -477,22 +618,82 @@ function frame() {
     const e = (nodeExcite.get(nd.id) || 0) + (nodeBase.get(nd.id) || 0);
     const [px, py, d] = project(m.pos[0], m.pos[1], m.pos[2], basis);
     if (d < 1) continue;
-    const size = Math.max(2.2, (m.active ? 5.5 : 3.2) * (1 + 0.8 * Math.min(e, 1.6)) * (22 / d));
-    const cc = nodeExciteColor.get(nd.id) || [110, 210, 255];
-    const g = ctx.createRadialGradient(px, py, 0, px, py, size * 3.2);
+    const foc = nd.id === hoverID || (selOn && nd.id === selectID);
+    const size = Math.max(2.8, (m.active ? 7 : 4.2) * (1 + 0.7 * Math.min(e, 1.6)) * (1 + (foc ? 0.15 : 0)) * (22 / d));
+    const cc = nodeExciteColor.get(nd.id) || (m.active ? [110, 210, 255] : [200, 165, 105]);
+    screenPos.set(nd.id, [px, py, size]);
+    const g = ctx.createRadialGradient(px, py, 0, px, py, size * 3.4);
     g.addColorStop(0, 'rgba(255,255,255,' + Math.min(1, 0.55 + 0.45 * e).toFixed(2) + ')');
     g.addColorStop(0.3, 'rgba(' + cc[0] + ',' + cc[1] + ',' + cc[2] + ',' + (0.4 + 0.5 * Math.min(e, 1)).toFixed(2) + ')');
     g.addColorStop(1, 'rgba(' + cc[0] + ',' + cc[1] + ',' + cc[2] + ',0)');
     ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(px, py, size * 3.2, 0, TAU); ctx.fill();
-    ctx.fillStyle = 'rgba(210,230,255,' + (0.55 + 0.4 * Math.min(e, 1)).toFixed(2) + ')';
-    ctx.fillText(m.name, px, py + size * 1.6);
+    ctx.beginPath(); ctx.arc(px, py, size * 3.4, 0, TAU); ctx.fill();
+    if (m.active) {
+      ctx.setLineDash([size * 1.05, size * 1.9]);
+      ctx.lineDashOffset = -t * (RM ? 1.5 : 9) * DPR;
+      ctx.strokeStyle = rgba([cc[0]/255, cc[1]/255, cc[2]/255], 0.4 + 0.45 * Math.min(e, 1));
+      ctx.lineWidth = Math.max(0.7, DPR);
+      ctx.beginPath(); ctx.arc(px, py, size * 2.4, 0, TAU); ctx.stroke();
+      ctx.setLineDash([]);
+    } else {
+      ctx.setLineDash([size * 0.5, size * 0.5]);
+      ctx.strokeStyle = 'rgba(200,165,105,0.4)';
+      ctx.lineWidth = Math.max(0.6, DPR);
+      ctx.beginPath(); ctx.arc(px, py, size * 2.1, 0, TAU); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.fillStyle = 'rgba(255,255,255,' + clamp(0.7 + 0.3 * Math.min(e, 1), 0, 1).toFixed(2) + ')';
+    ctx.beginPath(); ctx.arc(px, py, size * 0.45, 0, TAU); ctx.fill();
+    const la = clamp((1.25 - d / 46) * (0.6 + 0.4 * Math.min(e, 1)) * (foc ? 1.7 : 1), 0, 1);
+    if (la > 0.06) {
+      ctx.fillStyle = 'rgba(215,232,255,' + la.toFixed(2) + ')';
+      ctx.fillText(m.name, px, py + size * 2.5);
+    }
   }
+
+  /* empty state */
+  if (!nodes.length) {
+    ctx.fillStyle = 'rgba(123,135,163,0.8)';
+    ctx.font = (12 * DPR) + 'px ui-monospace, Menlo, monospace';
+    ctx.fillText('no agents yet — click + INIT AGENT', W / 2, H / 2 + 60 * DPR);
+  }
+
+  /* HUD cycle bar */
+  cycBarI.style.width = (clamp((now - cycleStart) / POLL_MS, 0, 1) * 100).toFixed(1) + '%';
 
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 
+/* ============ picking ============ */
+addEventListener('mousemove', e => {
+  if (dragging || !screenPos.size) {
+    hoverID = null;
+    cv.classList.remove('pick');
+    litRow(null);
+    return;
+  }
+  const mx = e.clientX * DPR, my = e.clientY * DPR;
+  let best = null, bd = 1e9;
+  for (const [id, sp] of screenPos) {
+    const dd = Math.hypot(sp[0] - mx, sp[1] - my);
+    if (dd < 30 * DPR && dd < bd) { bd = dd; best = id; }
+  }
+  hoverID = best;
+  cv.classList.toggle('pick', !!best);
+  litRow(best);
+});
+cv.addEventListener('mousedown', e => {
+  const mx = e.clientX * DPR, my = e.clientY * DPR;
+  for (const [id, sp] of screenPos) {
+    if (Math.hypot(sp[0] - mx, sp[1] - my) < 30 * DPR) { selectID = id; selectUntil = performance.now() + 4000; return; }
+  }
+});
+function litRow(id) {
+  for (const row of $('agentlist').children) row.classList.toggle('lit', row.dataset.aid === id);
+}
+
+/* ============ DOM ============ */
 const $ = id => document.getElementById(id);
 function setChip(id, cls, label) {
   const el = $(id);
@@ -512,12 +713,9 @@ function clock(iso) {
   return [d.getHours(), d.getMinutes(), d.getSeconds()].map(x => String(x).padStart(2, '0')).join(':');
 }
 function esc(s) {
-  return String(s || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  return String(s || '').replace(/[&<>"]/g, c => ({'&':'\u0026amp;','<':'\u0026lt;','>':'\u0026gt;','"':'\u0026quot;'}[c]));
 }
 function aid(a) { return a.id || a.agent_id; }
-
-let lostShown = false, prevAgentIds = '', seenAct = new Set(), bootstrapped = false;
-
 function actKey(ev) { return (ev.at || '') + '|' + (ev.kind || '') + '|' + (ev.actor || '') + '|' + (ev.other || '') + '|' + (ev.from || '') + '|' + (ev.to || ''); }
 function actMsg(ev) {
   if (ev.kind === 'used') return '<span class="who">' + esc(ev.actor) + '</span> used a note by <span class="who">' + esc(ev.other) + '</span>';
@@ -543,30 +741,32 @@ function renderFeed(list) {
   for (const ev of list.slice(0, 40)) {
     const row = document.createElement('div');
     row.className = 'ev ' + (ev.kind || '');
-    row.style.cursor = 'pointer';
     row.innerHTML = '<span class="t">' + clock(ev.at) + ' · ' + relTime(ev.at) + '</span>' + actMsg(ev);
-    row.addEventListener('click', () => flashEdge(ev.from, ev.to, 1.4, KIND_COLOR[ev.kind]));
+    row.addEventListener('click', () => {
+      flashEdge(ev.from, ev.to, 1.4, KIND_COLOR[ev.kind]);
+      shock(ev.from); shock(ev.to);
+    });
     el.appendChild(row);
   }
 }
-function flashEdge(from, to, amount, color) {
-  const amp = amount == null ? 1.0 : amount;
-  let hit = false;
-  for (const eo of edgeObjs) {
-    if ((eo.from === from && eo.to === to) || (eo.from === to && eo.to === from)) {
-      eo.act = Math.min(1.8, eo.act + amp);
-      hit = true;
-    }
+function renderAgents(ag) {
+  const el = $('agentlist');
+  el.innerHTML = '';
+  if (!ag.length) {
+    el.innerHTML = '<div class="ag empty">none yet</div>';
+    return;
   }
-  if (from) {
-    nodeExcite.set(from, Math.min(2.5, (nodeExcite.get(from) || 0) + amp));
-    if (color) nodeExciteColor.set(from, [Math.round(color[0]*255), Math.round(color[1]*255), Math.round(color[2]*255)]);
+  for (const a of ag) {
+    const row = document.createElement('div');
+    row.className = 'ag' + (a.status === 'suspended' ? ' susp' : '');
+    row.dataset.aid = aid(a);
+    row.innerHTML = '<span class="dot ' + (a.status === 'active' ? 'ok' : 'warn') + '" style="width:6px;height:6px"></span>' +
+      '<span class="nm">' + esc(a.name) + '</span><span class="tm">' + relTime(a.last_active) + '</span>';
+    row.addEventListener('mouseenter', () => { hoverID = aid(a); litRow(hoverID); });
+    row.addEventListener('mouseleave', () => { hoverID = null; litRow(null); });
+    row.addEventListener('click', () => { selectID = aid(a); selectUntil = performance.now() + 4000; });
+    el.appendChild(row);
   }
-  if (to) {
-    nodeExcite.set(to, Math.min(2.5, (nodeExcite.get(to) || 0) + amp * 0.85));
-    if (color) nodeExciteColor.set(to, [Math.round(color[0]*255), Math.round(color[1]*255), Math.round(color[2]*255)]);
-  }
-  return hit;
 }
 function paintHistory(list) {
   for (const ev of list) {
@@ -581,7 +781,11 @@ function paintHistory(list) {
   }
 }
 
+/* ============ polling · 3s inference cycle ============ */
+let lostShown = false, prevAgentIds = '', prevEdgeKeys = '', seenAct = new Set(), bootstrapped = false;
+
 async function poll() {
+  cycleStart = performance.now();
   try {
     const [tz, gr] = await Promise.all([
       fetch('/admin/telemetry').then(r => { if (!r.ok) throw new Error('telemetry ' + r.status); return r.json(); }),
@@ -592,52 +796,67 @@ async function poll() {
     setChip('ch-db', hz.db === 'ok' ? 'ok' : 'bad', 'db ' + (hz.db || '?'));
     setChip('ch-emb', hz.embedder === 'ok' ? 'ok' : 'warn', 'embedder ' + (hz.embedder || '?'));
     setChip('ch-sse', 'ok', 'streams ' + (hz.streams || 0));
+    setChip('ch-notes', 'dim', 'notes ' + (hz.note_versions != null ? hz.note_versions : '…'));
 
     nodes = (gr.nodes || []).map(n => ({ id: n.id, name: n.name, status: n.status }));
     edges = gr.edges || [];
     const ids = nodes.map(x => x.id).sort().join(',');
-    if (ids !== prevAgentIds) {
-      layout();
-      prevAgentIds = ids;
+    const idsChanged = ids !== prevAgentIds;
+    if (idsChanged) { layout(); prevAgentIds = ids; }
+    const ekeys = edges.map(edgeKey).sort().join(';');
+    if (ekeys !== prevEdgeKeys) {
+      prevEdgeKeys = ekeys;
+      if (!idsChanged) { buildEdges(); buildFlows(); }
+    } else {
+      const byKey = new Map(edges.map(e => [edgeKey(e), e]));
+      for (const eo of edgeObjs) {
+        const m = byKey.get(eo.from + '|' + eo.to + '|' + eo.kind);
+        if (m) eo.f = Math.min((m.count || 1) / 8, 1);
+      }
     }
     for (const a of ag) {
       const id = aid(a);
       const s = a.last_active ? Math.max(0, (Date.now() - new Date(a.last_active).getTime()) / 1000) : 1e9;
       nodeBase.set(id, Math.max(0, 0.35 * (1 - s / 10800)));
     }
-    $('agentlist').innerHTML = ag.map(a =>
-      '<div class="ag"><span class="dot ' + (a.status === 'active' ? 'ok' : 'warn') + '" style="width:6px;height:6px"></span>' +
-      '<span class="nm">' + esc(a.name) + '</span><span class="tm">' + relTime(a.last_active) + '</span></div>'
-    ).join('');
+    renderAgents(ag);
 
     const activity = tz.activity || [];
+    const fresh = [];
     if (!bootstrapped) {
       for (const ev of activity) seenAct.add(actKey(ev));
       renderFeed(activity);
       paintHistory(activity);
       bootstrapped = true;
     } else {
-      const fresh = [];
       for (const ev of activity) {
         const k = actKey(ev);
         if (seenAct.has(k)) continue;
         seenAct.add(k);
         fresh.push(ev);
-        flashEdge(ev.from, ev.to, 1.3, KIND_COLOR[ev.kind]);
+        flashEdge(ev.from, ev.to, 1.4, KIND_COLOR[ev.kind]);
+        burstNode(ev.from, 1);
+        burstNode(ev.to, 0.8);
+        shock(ev.from); shock(ev.to);
       }
       if (fresh.length) {
-        const merged = fresh.concat(activity.filter(ev => !fresh.includes(ev)));
-        renderFeed(merged);
+        wave();
+        globalBoost = 1;
+        coreFlash = Math.min(1.6, coreFlash + 0.8);
+        renderFeed(fresh.concat(activity.filter(ev => !fresh.includes(ev))));
       }
     }
+    cycleN++;
+    $('cyc-n').textContent = cycleN;
+    $('cyc-ev').textContent = fresh.length ? fresh.length + ' new action' + (fresh.length > 1 ? 's' : '') : 'listening';
   } catch (e) {
     if (!lostShown) { $('lost').style.display = 'block'; lostShown = true; }
   }
 }
-setInterval(poll, 2000);
+setInterval(poll, POLL_MS);
 poll();
 
-/* ---- Initialize Agent ---- */
+/* ============ Initialize Agent ============ */
 (function initAgent() {
   const modal = $('modal'), backdrop = $('modal-backdrop');
   const form = $('modal-form'), done = $('modal-done');
