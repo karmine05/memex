@@ -102,7 +102,7 @@
   #lost { position: fixed; z-index: 5; top: 0; left: 0; right: 0; display: none;
     background: rgba(59, 18, 32, .9); color: #ffb3bd; text-align: center;
     padding: 6px; font-size: 12px; }
-  #init-btn {
+  #init-btn, #zen-btn {
     margin-left: 6px; cursor: pointer; border-radius: 9px;
     background: linear-gradient(135deg, rgba(111,211,255,.16), rgba(111,211,255,.04));
     border: 1px solid rgba(111,211,255,.42); color: #cdeeff;
@@ -110,7 +110,7 @@
     letter-spacing: .06em; padding: 5px 13px;
     transition: background .15s, box-shadow .15s;
   }
-  #init-btn:hover { background: rgba(111,211,255,.26); box-shadow: 0 0 16px rgba(111,211,255,.35); }
+  #init-btn:hover, #zen-btn:hover { background: rgba(111,211,255,.26); box-shadow: 0 0 16px rgba(111,211,255,.35); }
   #modal-backdrop { position: fixed; inset: 0; z-index: 40; display: none;
     background: rgba(0,0,0,.62); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
   #modal { position: fixed; z-index: 41; top: 50%; left: 50%; transform: translate(-50%,-50%);
@@ -156,6 +156,9 @@
     color: #cdeeff; font: 600 10px ui-monospace, SFMono-Regular, Menlo, monospace;
     letter-spacing: .08em; padding: 4px 10px; border-radius: 7px; }
   .copy:hover { background: rgba(111,211,255,.16); }
+  /* zen mode — the animation alone, full screen, no chrome */
+  .panel, #hint { transition: opacity .5s ease; }
+  body.zen .panel, body.zen #hint { animation: none; opacity: 0; pointer-events: none; }
   @media (max-width: 900px) {
     #top { right: 190px; }
     #feed { width: 170px; }
@@ -180,6 +183,7 @@
   <span class="logo">MEM<em>EX</em></span>
   <span class="sub">agent inference network · live</span>
   <button id="init-btn" title="Create a new agent and get its key">+ INIT AGENT</button>
+  <button id="zen-btn" title="Full-screen ambient view (Z)">ZEN</button>
   <span class="chip">
     <span id="ch-db" class="warn"><span class="dot"></span>db …</span>
     <span id="ch-emb" class="warn"><span class="dot"></span>embedder …</span>
@@ -200,7 +204,7 @@
     <span id="cyc-ev">listening</span>
   </div>
 </div>
-<div id="hint">drag to orbit · scroll to zoom · hover a node · click to focus</div>
+<div id="hint">drag to orbit · scroll to zoom · hover a node · click to focus · Z for zen</div>
 <div id="modal-backdrop"></div>
 <div id="modal" class="panel">
   <h2>INITIALIZE AGENT</h2>
@@ -855,6 +859,23 @@ async function poll() {
 }
 setInterval(poll, POLL_MS);
 poll();
+
+/* ============ zen mode ============ */
+let zen = false;
+function setZen(on) {
+  zen = on;
+  document.body.classList.toggle('zen', on);
+  if (on && !document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {});
+  if (!on && document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+}
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'z' || e.key === 'Z') setZen(!zen);
+  else if (e.key === 'Escape' && zen) setZen(false);
+});
+document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && zen) setZen(false); });
+cv.addEventListener('dblclick', () => { if (zen) setZen(false); });
+$('zen-btn').addEventListener('click', () => setZen(true));
 
 /* ============ Initialize Agent ============ */
 (function initAgent() {

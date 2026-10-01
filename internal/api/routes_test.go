@@ -18,6 +18,18 @@ func TestEveryRouteHasAHandler(t *testing.T) {
 	}
 }
 
+func TestGraphHTMLHasZenMode(t *testing.T) {
+	for _, part := range []string{
+		"body.zen .panel", // css: hide chrome
+		`id="zen-btn"`,    // entry button
+		"function setZen", // toggle + fullscreen wiring
+	} {
+		if !bytes.Contains(graphHTML, []byte(part)) {
+			t.Fatalf("graph.html missing zen mode piece: %q", part)
+		}
+	}
+}
+
 func TestAdminRoutesAreAbsentFromAgentListener(t *testing.T) {
 	s := &Server{Cfg: config.Default(), Limit: NewLimiter()}
 	h := s.Handler("agent")
