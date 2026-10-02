@@ -68,6 +68,7 @@ func run(configPath string) error {
 		Cfg: cfg, Store: st, Hub: hub, Embed: emb,
 		AdminHash: auth.Hash(adminKey), Limit: api.NewLimiter(),
 		AuditPath: cfg.DataDir + "/audit.log",
+		WebsiteHandler: api.WebsiteHandler(),
 	}
 	errCh := make(chan error, 2)
 	go func() { errCh <- listen(ctx, cfg.Listen, srv.Handler("agent")) }()

@@ -1,5 +1,6 @@
-# Public mode. Caddy is the only service with a public port.
+# Public mode. Caddy is the only service with a public port (80/443).
 # The admin listener is published on loopback, never on the public edge.
+# The host runs Ollama; the sidecar is behind the "embed" profile.
 name: memex-public
 
 services:
@@ -37,9 +38,11 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
+      # Agent API stays on docker network (Caddy proxies).
+      # Admin stays on loopback only.
       - "127.0.0.1:8844:8844"
     volumes:
-      - memexdata:/data
+      - ../data:/data
     restart: unless-stopped
 
   postgres:
@@ -57,7 +60,14 @@ services:
       retries: 30
     restart: unless-stopped
 
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["embed"]
+    volumes:
+      - ollama_models:/root/.ollama
+    restart: unless-stopped
+
 volumes:
   pgdata:
-  memexdata:
+  ollama_models:
   caddydata:

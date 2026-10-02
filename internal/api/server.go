@@ -31,13 +31,14 @@ type Route struct {
 }
 
 type Server struct {
-	Cfg       config.Config
-	Store     *store.Store
-	Hub       *feed.Hub
-	Embed     search.Embedder
-	AdminHash string
-	Limit     *Limiter
-	AuditPath string
+	Cfg            config.Config
+	Store          *store.Store
+	Hub            *feed.Hub
+	Embed          search.Embedder
+	AdminHash      string
+	Limit          *Limiter
+	AuditPath      string
+	WebsiteHandler http.Handler
 
 	status  [600]atomic.Int64
 	auditMu sync.Mutex
@@ -64,7 +65,6 @@ func Routes() []Route {
 		{ID: "agent_inbox", Method: "GET", Mux: "/v1/agents/{id}/inbox", Path: "/v1/agents/{id}/inbox", Audience: "agent", Summary: "DM history for the calling agent"},
 		{ID: "dm", Method: "POST", Mux: "/v1/agents/{id}/dm", Path: "/v1/agents/{id}/dm", Audience: "agent", Summary: "Send a direct note"},
 
-		{ID: "admin_home", Method: "GET", Mux: "/{$}", Path: "/", Audience: "admin", Summary: "Correlation graph of which agent used whose notes"},
 		{ID: "admin_graph", Method: "GET", Mux: "/admin/graph", Path: "/admin/graph", Audience: "admin", Summary: "Correlation graph data"},
 		{ID: "skill", Method: "GET", Mux: "/skill.md", Path: "/skill.md", Audience: "admin", Summary: "Agent protocol (SKILL.md) for the one-prompt install"},
 		{ID: "telemetry", Method: "GET", Mux: "/admin/telemetry", Path: "/admin/telemetry", Audience: "admin", Summary: "Keyless read-only aggregates for the dashboard"},
@@ -90,6 +90,14 @@ func Routes() []Route {
 		{ID: "admin_eval", Method: "POST", Mux: "/admin/eval", Path: "/admin/eval", Audience: "admin", Summary: "MRR against a holdout set"},
 		{ID: "admin_stats", Method: "GET", Mux: "/admin/stats", Path: "/admin/stats", Audience: "admin", Summary: "Volume for a space or the instance"},
 		{ID: "admin_space", Method: "POST", Mux: "/admin/spaces/{path...}", Path: "/admin/spaces/{space}", Audience: "admin", Summary: "Lock a space or replace its ACL"},
+
+		// Website routes (served on admin listener at /)
+		{ID: "website_root", Method: "GET", Mux: "/{$}", Path: "/", Audience: "admin", Summary: "MEMEX admin UI"},
+		{ID: "website_assets", Method: "GET", Mux: "/assets/{path...}", Path: "/assets/", Audience: "admin", Summary: "MEMEX website assets"},
+		{ID: "website_spa", Method: "GET", Mux: "/{path...}", Path: "/{path}", Audience: "admin", Summary: "MEMEX SPA fallback"},
+
+		// Dashboard route serves the admin graph (for website button compatibility)
+		{ID: "admin_dashboard", Method: "GET", Mux: "/dashboard/", Path: "/dashboard", Audience: "admin", Summary: "Admin graph UI (dashboard redirect)"},
 	}
 }
 
@@ -140,7 +148,7 @@ func (s *Server) handler(id string) http.HandlerFunc {
 		return s.inboxStream
 	case "dm":
 		return s.dm
-	case "admin_home":
+	case "admin_dashboard":
 		return s.adminHome
 	case "admin_graph":
 		return s.adminGraph
@@ -190,6 +198,11 @@ func (s *Server) handler(id string) http.HandlerFunc {
 		return s.adminStats
 	case "admin_space":
 		return s.adminSpace
+	case "website_root", "website_assets", "website_spa":
+		if s.WebsiteHandler != nil {
+			return s.WebsiteHandler.ServeHTTP
+		}
+		return http.NotFound
 	default:
 		return nil
 	}
@@ -201,7 +214,7 @@ func (s *Server) wrap(next http.Handler) http.Handler {
 		start := time.Now()
 		next.ServeHTTP(sw, r)
 		path := r.URL.Path
-		dash := path == "/" || path == "/healthz" || path == "/metrics" || path == "/admin/telemetry" || path == "/admin/graph"
+		dash := path == "/" || path == "/healthz" || path == "/metrics" || path == "/admin/telemetry"
 		if !dash && sw.code >= 100 && sw.code < 600 {
 			s.status[sw.code].Add(1)
 		}

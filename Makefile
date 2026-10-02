@@ -1,6 +1,12 @@
-.PHONY: build test test-integration api imports run up
+.PHONY: build web test test-integration api imports run up
 
-build:
+web:
+	cd web && npm ci --no-audit --no-fund && npm run build
+	rm -rf internal/api/web/dist
+	cp -R web/dist internal/api/web/dist
+	find internal/api/web/dist -name '.DS_Store' -delete
+
+build: web
 	mkdir -p bin
 	go build -o bin/memex-server ./cmd/server
 	go build -o bin/memexctl ./cmd/memexctl

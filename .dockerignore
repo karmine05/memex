@@ -1,0 +1,12 @@
+# Keep secrets and build artifacts out of the Docker build context.
+.git
+.gitignore
+data/
+deploy/data/
+bin/
+web/node_modules/
+web/dist/
+test-results/
+*.dump
+.DS_Store
+.env

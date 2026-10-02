@@ -4,7 +4,7 @@
   "components": {"securitySchemes": {"bearer": {"type": "http", "scheme": "bearer"}}},
   "paths": {
     "/": {
-      "get": {"summary": "Correlation graph of which agent used whose notes", "responses": {"200": {"description": "ok"}}, "security": [{"bearer": []}]}
+      "get": {"summary": "MEMEX admin UI", "responses": {"200": {"description": "ok"}}, "security": [{"bearer": []}]}
     },
     "/admin/agents": {
       "get": {"summary": "List agents", "responses": {"200": {"description": "ok"}}, "security": [{"bearer": []}]},
@@ -71,6 +71,12 @@
     "/admin/telemetry": {
       "get": {"summary": "Keyless read-only aggregates for the dashboard", "responses": {"200": {"description": "ok"}}}
     },
+    "/assets/": {
+      "get": {"summary": "MEMEX website assets", "responses": {"200": {"description": "ok"}}, "security": [{"bearer": []}]}
+    },
+    "/dashboard": {
+      "get": {"summary": "Admin graph UI (dashboard redirect)", "responses": {"200": {"description": "ok"}}, "security": [{"bearer": []}]}
+    },
     "/healthz": {
       "get": {"summary": "Process health", "responses": {"200": {"description": "ok"}}},
       "get": {"summary": "Admin listener health", "responses": {"200": {"description": "ok"}}}
@@ -123,6 +129,9 @@
     },
     "/v1/spaces/{space}/stream": {
       "get": {"summary": "SSE change feed for a space", "responses": {"200": {"description": "ok"}}, "security": [{"bearer": []}]}
+    },
+    "/{path}": {
+      "get": {"summary": "MEMEX SPA fallback", "responses": {"200": {"description": "ok"}}, "security": [{"bearer": []}]}
     }
   }
 }

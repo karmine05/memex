@@ -31,26 +31,37 @@ func TestGraphHTMLHasZenMode(t *testing.T) {
 }
 
 func TestAdminRoutesAreAbsentFromAgentListener(t *testing.T) {
-	s := &Server{Cfg: config.Default(), Limit: NewLimiter()}
+	s := &Server{Cfg: config.Default(), Limit: NewLimiter(), WebsiteHandler: WebsiteHandler()}
 	h := s.Handler("agent")
 	req := httptest.NewRequest(http.MethodGet, "/admin/agents", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusNotFound {
-		t.Fatalf("agent listener status %d", rr.Code)
+		t.Fatalf("agent listener /admin/agents status %d", rr.Code)
 	}
+	// Agent listener does NOT serve website (website is admin-only)
 	home := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr = httptest.NewRecorder()
 	h.ServeHTTP(rr, home)
 	if rr.Code != http.StatusNotFound {
-		t.Fatalf("agent home status %d", rr.Code)
+		t.Fatalf("agent home should be 404, got %d", rr.Code)
 	}
+
 	admin := s.Handler("admin")
+	// Admin listener serves React app at /
 	rr = httptest.NewRecorder()
 	admin.ServeHTTP(rr, home)
 	if rr.Code != http.StatusOK || len(rr.Body.Bytes()) < 100 {
 		t.Fatalf("admin home %d", rr.Code)
 	}
+	if ct := rr.Header().Get("Content-Type"); ct != "text/html; charset=utf-8" {
+		t.Fatalf("admin home content-type %q", ct)
+	}
+	if !bytes.Contains(rr.Body.Bytes(), []byte("MEMEX — Shared Memory for Agents")) {
+		t.Fatalf("admin home missing React app content")
+	}
+
+	// Admin API endpoints still work
 	req = httptest.NewRequest(http.MethodGet, "/admin/telemetry", nil)
 	rr = httptest.NewRecorder()
 	admin.ServeHTTP(rr, req)
@@ -90,18 +101,38 @@ func TestSkillMDIsKeylessOnAdminOnly(t *testing.T) {
 	}
 }
 
-func TestAdminHomeIsNotACatchAll(t *testing.T) {
-	s := &Server{Cfg: config.Default(), Limit: NewLimiter()}
+func TestAdminHomeServesGraph(t *testing.T) {
+	s := &Server{Cfg: config.Default(), Limit: NewLimiter(), WebsiteHandler: WebsiteHandler()}
 	admin := s.Handler("admin")
 
+	// Admin home at / serves the React app
 	home := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
 	admin.ServeHTTP(rr, home)
 	if rr.Code != http.StatusOK {
-		t.Fatalf("admin home %d", rr.Code)
+		t.Fatalf("admin home %d: %s", rr.Code, rr.Body.String())
 	}
 	if ct := rr.Header().Get("Content-Type"); ct != "text/html; charset=utf-8" {
 		t.Fatalf("admin home content-type %q", ct)
+	}
+	// Should contain React app content
+	if !bytes.Contains(rr.Body.Bytes(), []byte("MEMEX — Shared Memory for Agents")) {
+		t.Fatalf("admin home missing React app content: %s", rr.Body.String()[:200])
+	}
+
+	// Dashboard at /dashboard/ serves the 3D graph (graph.html)
+	dashboard := httptest.NewRequest(http.MethodGet, "/dashboard/", nil)
+	rr = httptest.NewRecorder()
+	admin.ServeHTTP(rr, dashboard)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("dashboard %d: %s", rr.Code, rr.Body.String())
+	}
+	if ct := rr.Header().Get("Content-Type"); ct != "text/html; charset=utf-8" {
+		t.Fatalf("dashboard content-type %q", ct)
+	}
+	// Should contain graph content (zen mode, etc.)
+	if !bytes.Contains(rr.Body.Bytes(), []byte("body.zen .panel")) {
+		t.Fatalf("dashboard missing graph content (zen mode): %s", rr.Body.String()[:200])
 	}
 
 	met := httptest.NewRequest(http.MethodGet, "/metrics", nil)
@@ -112,12 +143,5 @@ func TestAdminHomeIsNotACatchAll(t *testing.T) {
 	}
 	if ct := rr.Header().Get("Content-Type"); ct != "text/plain; version=0.0.4" {
 		t.Fatalf("metrics content-type %q body %q", ct, rr.Body.String())
-	}
-
-	bogus := httptest.NewRequest(http.MethodGet, "/admin/metrics", nil)
-	rr = httptest.NewRecorder()
-	admin.ServeHTTP(rr, bogus)
-	if rr.Code != http.StatusNotFound {
-		t.Fatalf("unknown admin path %d body %s", rr.Code, rr.Body.String())
 	}
 }

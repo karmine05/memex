@@ -1,5 +1,5 @@
-# Private mode. Agent and admin ports publish on loopback only.
-# Postgres and Ollama stay on the docker network.
+# Private mode. Agent API on LAN, admin on loopback only.
+# Postgres stays on docker network. Ollama runs on host.
 # The host already runs Ollama, so the sidecar is behind the "embed" profile.
 name: memex
 
@@ -29,7 +29,7 @@ services:
       - "8843:8843"
       - "127.0.0.1:8844:8844"
     volumes:
-      - memexdata:/data
+      - ../data:/data
     restart: unless-stopped
 
   postgres:
@@ -56,5 +56,4 @@ services:
 
 volumes:
   pgdata:
-  memexdata:
   ollama_models:
