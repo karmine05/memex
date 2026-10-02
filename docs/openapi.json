@@ -4,7 +4,7 @@
   "components": {"securitySchemes": {"bearer": {"type": "http", "scheme": "bearer"}}},
   "paths": {
     "/": {
-      "get": {"summary": "MEMEX admin UI", "responses": {"200": {"description": "ok"}}, "security": [{"bearer": []}]}
+      "get": {"summary": "MEMEX landing page", "responses": {"200": {"description": "ok"}}, "security": [{"bearer": []}]}
     },
     "/admin/agents": {
       "get": {"summary": "List agents", "responses": {"200": {"description": "ok"}}, "security": [{"bearer": []}]},
@@ -73,6 +73,9 @@
     },
     "/assets/": {
       "get": {"summary": "MEMEX website assets", "responses": {"200": {"description": "ok"}}, "security": [{"bearer": []}]}
+    },
+    "/dash": {
+      "get": {"summary": "MEMEX dashboard (admin UI, mxa_ key)", "responses": {"200": {"description": "ok"}}, "security": [{"bearer": []}]}
     },
     "/healthz": {
       "get": {"summary": "Process health", "responses": {"200": {"description": "ok"}}},

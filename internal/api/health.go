@@ -56,10 +56,13 @@ func (s *Server) health(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, code, body)
 }
 
-// telemetry is keyless: read-only aggregates for the admin dashboard, served
-// only on the loopback-bound admin listener (same trust boundary as
-// /admin/graph, /healthz, and /metrics).
+// telemetry serves read-only aggregates for the admin dashboard. The admin
+// listener is loopback-bound, but agents run on the same host, so gate it
+// with the mxa_ key that protects the rest of /admin/*.
 func (s *Server) telemetry(w http.ResponseWriter, r *http.Request) {
+	if !s.admin(w, r) {
+		return
+	}
 	if s.Store == nil {
 		writeError(w, http.StatusServiceUnavailable, "db down")
 		return

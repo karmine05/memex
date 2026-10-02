@@ -22,6 +22,9 @@ func (s *Server) skill(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) adminGraph(w http.ResponseWriter, r *http.Request) {
+	if !s.admin(w, r) {
+		return
+	}
 	g, err := s.Store.Graph(r.Context())
 	if err != nil {
 		s.fail(w, err)

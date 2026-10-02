@@ -1,5 +1,13 @@
 import type { AgentStats, AgentCreateRequest, AgentCreateResponse, GraphData, TelemetryData } from '../types';
 
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -22,7 +30,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       const err = await res.json();
       message = err.error || message;
     } catch {}
-    throw new Error(message);
+    throw new ApiError(message, res.status);
   }
 
   if (res.status === 204) {

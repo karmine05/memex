@@ -35,6 +35,7 @@ type Server struct {
 	Store          *store.Store
 	Hub            *feed.Hub
 	Embed          search.Embedder
+	AdminHash      string
 	Limit          *Limiter
 	AuditPath      string
 	WebsiteHandler http.Handler
@@ -91,7 +92,8 @@ func Routes() []Route {
 		{ID: "admin_space", Method: "POST", Mux: "/admin/spaces/{path...}", Path: "/admin/spaces/{space}", Audience: "admin", Summary: "Lock a space or replace its ACL"},
 
 		// Website routes (served on admin listener at /)
-		{ID: "website_root", Method: "GET", Mux: "/{$}", Path: "/", Audience: "admin", Summary: "MEMEX admin UI"},
+		{ID: "website_root", Method: "GET", Mux: "/{$}", Path: "/", Audience: "admin", Summary: "MEMEX landing page"},
+		{ID: "website_dash", Method: "GET", Mux: "/dash", Path: "/dash", Audience: "admin", Summary: "MEMEX dashboard (admin UI, mxa_ key)"},
 		{ID: "website_assets", Method: "GET", Mux: "/assets/{path...}", Path: "/assets/", Audience: "admin", Summary: "MEMEX website assets"},
 		{ID: "website_spa", Method: "GET", Mux: "/{path...}", Path: "/{path}", Audience: "admin", Summary: "MEMEX SPA fallback"},
 
@@ -193,7 +195,7 @@ func (s *Server) handler(id string) http.HandlerFunc {
 		return s.adminStats
 	case "admin_space":
 		return s.adminSpace
-	case "website_root", "website_assets", "website_spa":
+	case "website_root", "website_dash", "website_assets", "website_spa":
 		if s.WebsiteHandler != nil {
 			return s.WebsiteHandler.ServeHTTP
 		}
@@ -263,8 +265,20 @@ func (s *Server) agent(w http.ResponseWriter, r *http.Request) (store.Agent, boo
 	return ag, true
 }
 
+func (s *Server) isAdmin(r *http.Request) bool {
+	raw := bearer(r)
+	if !strings.HasPrefix(raw, auth.PrefixAdmin) || s.AdminHash == "" {
+		return false
+	}
+	return auth.EqualHash(auth.Hash(raw), s.AdminHash)
+}
+
 func (s *Server) admin(w http.ResponseWriter, r *http.Request) bool {
-	return true // keyless admin access on loopback
+	if !s.isAdmin(r) {
+		writeError(w, http.StatusUnauthorized, "admin key required")
+		return false
+	}
+	return true
 }
 
 func (s *Server) limitsFor(quota []byte) store.Limits {

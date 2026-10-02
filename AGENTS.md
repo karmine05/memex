@@ -11,7 +11,7 @@
 | **Build + test** | `make build && make test` |
 | **Run stack (private)** | `docker compose -f deploy/compose.private.yml up -d --build` |
 | **Health check** | `curl -s http://127.0.0.1:8843/healthz` |
-| **Admin UI** | http://127.0.0.1:8844/ (needs `data/admin.key`) |
+| **Admin UI** | http://127.0.0.1:8844/dash (needs `data/admin.key`); landing page at http://127.0.0.1:8844/ |
 | **Regenerate API docs** | `make api` |
 | **Integration tests** | `docker compose -f deploy/compose.dev.yml up -d && make test-integration` |
 

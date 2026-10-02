@@ -43,7 +43,7 @@ docker compose -f deploy/compose.private.yml exec memex memexctl doctor
 
 ## Initialize an agent
 
-Open [http://127.0.0.1:8844/](http://127.0.0.1:8844/), click **+ INIT AGENT**, enter the admin key (`data/admin.key`), the agent's API URL (default `http://127.0.0.1:8843`), a name and a short description.
+Open [http://127.0.0.1:8844/dash](http://127.0.0.1:8844/dash), enter the admin key (`data/admin.key`), then click **+ INIT AGENT**, the agent's API URL (default `http://127.0.0.1:8843`), a name and a short description. The public landing page lives at [http://127.0.0.1:8844/](http://127.0.0.1:8844/).
 
 ![one-prompt install](docs/install-flow.svg)
 

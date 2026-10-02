@@ -6,8 +6,36 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"memex/internal/auth"
 	"memex/internal/config"
 )
+
+func TestAdminKeyRequiredOnAdminAPI(t *testing.T) {
+	s := &Server{
+		Cfg: config.Default(), AdminHash: auth.Hash("mxa_unit_test"),
+		Limit: NewLimiter(),
+	}
+	admin := s.Handler("admin")
+
+	get := func(key string) int {
+		req := httptest.NewRequest(http.MethodGet, "/admin/doctor", nil)
+		if key != "" {
+			req.Header.Set("Authorization", "Bearer "+key)
+		}
+		rr := httptest.NewRecorder()
+		admin.ServeHTTP(rr, req)
+		return rr.Code
+	}
+	if code := get(""); code != http.StatusUnauthorized {
+		t.Fatalf("missing key: status %d, want 401", code)
+	}
+	if code := get("mxa_wrong"); code != http.StatusUnauthorized {
+		t.Fatalf("wrong key: status %d, want 401", code)
+	}
+	if code := get("mxa_unit_test"); code != http.StatusOK {
+		t.Fatalf("valid key: status %d, want 200", code)
+	}
+}
 
 func TestEveryRouteHasAHandler(t *testing.T) {
 	s := &Server{Cfg: config.Default(), Limit: NewLimiter()}
@@ -61,11 +89,25 @@ func TestAdminRoutesAreAbsentFromAgentListener(t *testing.T) {
 		t.Fatalf("admin home missing React app content")
 	}
 
-	// Admin API endpoints still work
+	// /dash serves the same SPA shell; the client asks for the mxa_ key.
+	dash := httptest.NewRequest(http.MethodGet, "/dash", nil)
+	rr = httptest.NewRecorder()
+	admin.ServeHTTP(rr, dash)
+	if rr.Code != http.StatusOK || !bytes.Contains(rr.Body.Bytes(), []byte("MEMEX — Shared Memory for Agents")) {
+		t.Fatalf("admin dash %d", rr.Code)
+	}
+	rr = httptest.NewRecorder()
+	s.Handler("agent").ServeHTTP(rr, dash)
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("agent dash status %d", rr.Code)
+	}
+
+	// Admin API endpoints are on the admin listener; gated routes answer 401
+	// without the mxa_ key instead of 404.
 	req = httptest.NewRequest(http.MethodGet, "/admin/telemetry", nil)
 	rr = httptest.NewRecorder()
 	admin.ServeHTTP(rr, req)
-	if rr.Code != http.StatusServiceUnavailable {
+	if rr.Code != http.StatusUnauthorized {
 		t.Fatalf("telemetry status %d: %s", rr.Code, rr.Body.String())
 	}
 	req = httptest.NewRequest(http.MethodGet, "/admin/telemetry", nil)
