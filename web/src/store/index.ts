@@ -29,10 +29,6 @@ interface AppState {
   // UI
   isZenMode: boolean;
   setZenMode: (enabled: boolean) => void;
-  inspectorWidth: number;
-  setInspectorWidth: (width: number) => void;
-  agentsWidth: number;
-  setAgentsWidth: (width: number) => void;
 
   // Command palette
   isCommandPaletteOpen: boolean;
@@ -70,10 +66,6 @@ export const useAppStore = create<AppState>()(
 
     isZenMode: false,
     setZenMode: (enabled) => set((state) => { state.isZenMode = enabled; }),
-    inspectorWidth: 320,
-    setInspectorWidth: (width) => set((state) => { state.inspectorWidth = width; }),
-    agentsWidth: 280,
-    setAgentsWidth: (width) => set((state) => { state.agentsWidth = width; }),
 
     isCommandPaletteOpen: false,
     setCommandPaletteOpen: (open) => set((state) => { state.isCommandPaletteOpen = open; }),

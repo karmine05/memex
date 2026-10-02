@@ -1,5 +1,5 @@
 import { useAppStore } from '../store';
-import { api, clearAdminKey } from '../utils/api';
+import { api, clearAdminKey, getAdminKey, setAdminKey } from '../utils/api';
 import { useState, useEffect } from 'react';
 
 export function TopBar() {
@@ -64,10 +64,10 @@ export function TopBar() {
 
         <button
           onClick={() => setCreateAgentOpen(true)}
-          className="btn-primary hidden sm:inline-flex"
+          className="btn-init hidden sm:inline-flex"
           aria-label="Create new agent"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
           <span>Init Agent</span>
         </button>
 
@@ -115,7 +115,7 @@ function buildPrompt(name: string, desc: string, url: string, key: string, id: s
   );
 }
 
-function CopyField({ label, value, mono = true }: { label: string; value: string; mono?: boolean }) {
+function CopyField({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
     try {
@@ -134,21 +134,26 @@ function CopyField({ label, value, mono = true }: { label: string; value: string
   };
   return (
     <div>
-      <div className="flex items-center justify-between mb-1">
-        <label className="label">{label}</label>
-        <button type="button" onClick={copy} className="btn-ghost text-xs py-0.5 px-2">
+      <label className="label">{label}</label>
+      <div className="flex gap-1.5">
+        <code className="block flex-1 min-w-0 bg-bg/60 border border-border/50 p-2 rounded-lg break-all font-mono text-xs text-text">
+          {value}
+        </code>
+        <button
+          type="button"
+          onClick={copy}
+          className={`btn text-xs uppercase tracking-wider px-3 ${copied ? 'bg-ok/20 text-ok border border-ok/30' : 'btn-secondary'}`}
+        >
           {copied ? 'Copied' : 'Copy'}
         </button>
       </div>
-      <code className={`block bg-border/50 p-2 rounded-lg break-all ${mono ? 'font-mono text-xs' : 'text-sm'} text-text`}>
-        {value}
-      </code>
     </div>
   );
 }
 
 function CreateAgentModal({ onClose }: { onClose: () => void }) {
   const { addAgent } = useAppStore();
+  const [adminKey, setAdminKeyValue] = useState(getAdminKey() ?? '');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [url, setUrl] = useState(`http://${window.location.hostname}:8843`);
@@ -163,6 +168,7 @@ function CreateAgentModal({ onClose }: { onClose: () => void }) {
       setError('Agent API URL must be http(s)://host:port');
       return;
     }
+    if (adminKey.trim()) setAdminKey(adminKey.trim());
     setLoading(true);
     setError('');
     try {
@@ -198,59 +204,60 @@ function CreateAgentModal({ onClose }: { onClose: () => void }) {
           <>
             <h2 id="create-agent-title" className="font-ui font-bold text-lg mb-1">Agent initialized</h2>
             <p className="text-textMuted text-sm mb-4">
-              The API key is shown <span className="text-text">once</span>. Give the agent the one-prompt install below.
+              Give the agent the one-prompt install below.
             </p>
+            <div className="p-3 rounded-lg border border-warn/30 bg-warn/10 mb-4">
+              <p className="font-mono text-xs text-warn leading-relaxed">
+                The key is shown <span className="font-bold">once</span>. It is stored only as a SHA-256 hash — copy it now or it is lost.
+              </p>
+            </div>
             <div className="space-y-4">
-              <CopyField label="API Key (shown once)" value={result.apiKey} />
+              <CopyField label="API Key (mxk_)" value={result.apiKey} />
               <CopyField label="Agent ID" value={result.agentId} />
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="label">One-prompt install</label>
-                  <button type="button" onClick={() => navigator.clipboard.writeText(result.prompt)} className="btn-ghost text-xs py-0.5 px-2">
+                <label className="label">One-prompt install — paste this into the agent</label>
+                <div className="flex gap-1.5">
+                  <textarea
+                    readOnly
+                    value={result.prompt}
+                    className="input font-mono text-xs flex-1 min-w-0 h-40 resize-none"
+                    onFocus={(e) => e.target.select()}
+                    aria-label="One-prompt install for the agent"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => navigator.clipboard.writeText(result.prompt)}
+                    className="btn btn-secondary text-xs uppercase tracking-wider px-3 self-start"
+                  >
                     Copy
                   </button>
                 </div>
-                <textarea
-                  readOnly
-                  value={result.prompt}
-                  className="input font-mono text-xs h-40 resize-none"
-                  onFocus={(e) => e.target.select()}
-                  aria-label="One-prompt install for the agent"
-                />
               </div>
-              <button onClick={onClose} className="btn-primary w-full">Done</button>
+              <button onClick={onClose} className="btn-init w-full">Done</button>
             </div>
           </>
         ) : (
           <>
-            <h2 id="create-agent-title" className="font-ui font-bold text-lg mb-4">Create Agent</h2>
+            <h2 id="create-agent-title" className="font-ui font-bold text-lg mb-1">Initialize Agent</h2>
+            <p className="text-textMuted text-sm mb-4">
+              Creates an agent, issues its key, and builds a one-prompt install.
+            </p>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label htmlFor="agent-name" className="label">Name</label>
+                <label htmlFor="agent-admin-key" className="label">Admin Key (mxa_)</label>
                 <input
-                  id="agent-name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  id="agent-admin-key"
+                  type="password"
+                  value={adminKey}
+                  onChange={(e) => setAdminKeyValue(e.target.value)}
                   className="input"
-                  placeholder="ops-bot"
-                  autoFocus
-                  required
+                  placeholder="mxa_…"
+                  autoComplete="off"
+                  spellCheck={false}
                 />
               </div>
               <div>
-                <label htmlFor="agent-desc" className="label">Description</label>
-                <input
-                  id="agent-desc"
-                  type="text"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="input"
-                  placeholder="what it does"
-                />
-              </div>
-              <div>
-                <label htmlFor="agent-url" className="label">Agent API URL</label>
+                <label htmlFor="agent-url" className="label">Agent API URL (MEMEX_URL)</label>
                 <input
                   id="agent-url"
                   type="url"
@@ -258,14 +265,46 @@ function CreateAgentModal({ onClose }: { onClose: () => void }) {
                   onChange={(e) => setUrl(e.target.value)}
                   className="input font-mono text-xs"
                   placeholder="http://host:8843"
+                  autoComplete="off"
+                  spellCheck={false}
                 />
                 <p className="text-textMuted text-xs mt-1">The address agents use to reach the agent API (:8843).</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="agent-name" className="label">Agent Name</label>
+                  <input
+                    id="agent-name"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="input"
+                    placeholder="ops-bot"
+                    autoComplete="off"
+                    spellCheck={false}
+                    autoFocus
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="agent-desc" className="label">Description</label>
+                  <input
+                    id="agent-desc"
+                    type="text"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="input"
+                    placeholder="what it does"
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                </div>
               </div>
               {error && <p className="text-bad text-sm" role="alert">{error}</p>}
               <div className="flex gap-2 justify-end pt-2">
                 <button type="button" onClick={onClose} className="btn-secondary" disabled={loading}>Cancel</button>
-                <button type="submit" className="btn-primary" disabled={loading || !name.trim()}>
-                  {loading ? 'Creating…' : 'Create Agent'}
+                <button type="submit" className="btn-init" disabled={loading || !name.trim()}>
+                  {loading ? 'Initializing…' : 'Initialize'}
                 </button>
               </div>
             </form>

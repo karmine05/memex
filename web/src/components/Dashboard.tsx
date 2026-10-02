@@ -1,9 +1,8 @@
 import { useEffect } from 'react';
 import { useAppStore } from '../store';
 import { api } from '../utils/api';
-import { AgentsPane } from './AgentsPane';
+import { AgentCard } from './AgentCard';
 import { GraphPane } from './GraphPane';
-import { InspectorPane } from './InspectorPane';
 import { TopBar } from './TopBar';
 import { CommandPalette } from './CommandPalette';
 
@@ -52,10 +51,9 @@ export function Dashboard() {
     <div className="h-full w-full flex flex-col" data-zen={isZenMode}>
       <TopBar />
       <div className="flex-1 flex overflow-hidden">
-        <AgentsPane />
         <GraphPane />
-        <InspectorPane />
       </div>
+      <AgentCard />
       <CommandPalette />
     </div>
   );

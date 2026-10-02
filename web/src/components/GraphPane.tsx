@@ -60,7 +60,7 @@ function GraphLegend({
   onSelect: (id: string) => void;
 }) {
   return (
-    <div className="absolute bottom-4 left-4 glass p-3 rounded-xl max-h-60 overflow-auto pointer-events-auto" style={{ maxWidth: 200 }}>
+    <div className="absolute top-4 left-4 glass p-3 rounded-xl max-h-60 overflow-auto pointer-events-auto" style={{ maxWidth: 200 }}>
       <div className="font-mono text-xs text-textMuted uppercase tracking-wider mb-2">Agents</div>
       <div className="space-y-1">
         {nodes.slice(0, 20).map((node) => (
