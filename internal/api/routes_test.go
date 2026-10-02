@@ -120,21 +120,6 @@ func TestAdminHomeServesGraph(t *testing.T) {
 		t.Fatalf("admin home missing React app content: %s", rr.Body.String()[:200])
 	}
 
-	// Dashboard at /dashboard/ serves the 3D graph (graph.html)
-	dashboard := httptest.NewRequest(http.MethodGet, "/dashboard/", nil)
-	rr = httptest.NewRecorder()
-	admin.ServeHTTP(rr, dashboard)
-	if rr.Code != http.StatusOK {
-		t.Fatalf("dashboard %d: %s", rr.Code, rr.Body.String())
-	}
-	if ct := rr.Header().Get("Content-Type"); ct != "text/html; charset=utf-8" {
-		t.Fatalf("dashboard content-type %q", ct)
-	}
-	// Should contain graph content (zen mode, etc.)
-	if !bytes.Contains(rr.Body.Bytes(), []byte("body.zen .panel")) {
-		t.Fatalf("dashboard missing graph content (zen mode): %s", rr.Body.String()[:200])
-	}
-
 	met := httptest.NewRequest(http.MethodGet, "/metrics", nil)
 	rr = httptest.NewRecorder()
 	admin.ServeHTTP(rr, met)

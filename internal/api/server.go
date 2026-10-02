@@ -35,7 +35,6 @@ type Server struct {
 	Store          *store.Store
 	Hub            *feed.Hub
 	Embed          search.Embedder
-	AdminHash      string
 	Limit          *Limiter
 	AuditPath      string
 	WebsiteHandler http.Handler
@@ -96,9 +95,7 @@ func Routes() []Route {
 		{ID: "website_assets", Method: "GET", Mux: "/assets/{path...}", Path: "/assets/", Audience: "admin", Summary: "MEMEX website assets"},
 		{ID: "website_spa", Method: "GET", Mux: "/{path...}", Path: "/{path}", Audience: "admin", Summary: "MEMEX SPA fallback"},
 
-		// Dashboard route serves the admin graph (for website button compatibility)
-		{ID: "admin_dashboard", Method: "GET", Mux: "/dashboard/", Path: "/dashboard", Audience: "admin", Summary: "Admin graph UI (dashboard redirect)"},
-	}
+		}
 }
 
 func (s *Server) Handler(audience string) http.Handler {
@@ -148,8 +145,6 @@ func (s *Server) handler(id string) http.HandlerFunc {
 		return s.inboxStream
 	case "dm":
 		return s.dm
-	case "admin_dashboard":
-		return s.adminHome
 	case "admin_graph":
 		return s.adminGraph
 	case "skill":
@@ -268,20 +263,8 @@ func (s *Server) agent(w http.ResponseWriter, r *http.Request) (store.Agent, boo
 	return ag, true
 }
 
-func (s *Server) isAdmin(r *http.Request) bool {
-	raw := bearer(r)
-	if !strings.HasPrefix(raw, auth.PrefixAdmin) || s.AdminHash == "" {
-		return false
-	}
-	return auth.EqualHash(auth.Hash(raw), s.AdminHash)
-}
-
 func (s *Server) admin(w http.ResponseWriter, r *http.Request) bool {
-	if !s.isAdmin(r) {
-		writeError(w, http.StatusUnauthorized, "admin key required")
-		return false
-	}
-	return true
+	return true // keyless admin access on loopback
 }
 
 func (s *Server) limitsFor(quota []byte) store.Limits {

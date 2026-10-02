@@ -74,9 +74,6 @@
     "/assets/": {
       "get": {"summary": "MEMEX website assets", "responses": {"200": {"description": "ok"}}, "security": [{"bearer": []}]}
     },
-    "/dashboard": {
-      "get": {"summary": "Admin graph UI (dashboard redirect)", "responses": {"200": {"description": "ok"}}, "security": [{"bearer": []}]}
-    },
     "/healthz": {
       "get": {"summary": "Process health", "responses": {"200": {"description": "ok"}}},
       "get": {"summary": "Admin listener health", "responses": {"200": {"description": "ok"}}}

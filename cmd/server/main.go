@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"memex/internal/api"
-	"memex/internal/auth"
 	"memex/internal/config"
 	"memex/internal/feed"
 	"memex/internal/search"
@@ -43,10 +42,6 @@ func run(configPath string) error {
 	if err := os.MkdirAll(cfg.DataDir, 0700); err != nil {
 		return err
 	}
-	adminKey, err := loadAdminKey(cfg.DataDir)
-	if err != nil {
-		return err
-	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	st, err := store.Open(ctx, cfg.DB)
@@ -66,7 +61,7 @@ func run(configPath string) error {
 	go maintain(ctx, st)
 	srv := &api.Server{
 		Cfg: cfg, Store: st, Hub: hub, Embed: emb,
-		AdminHash: auth.Hash(adminKey), Limit: api.NewLimiter(),
+		Limit: api.NewLimiter(),
 		AuditPath: cfg.DataDir + "/audit.log",
 		WebsiteHandler: api.WebsiteHandler(),
 	}

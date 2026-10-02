@@ -81,12 +81,8 @@ func (s *Server) registrationOK(w http.ResponseWriter, r *http.Request, invite s
 		}
 		writeError(w, http.StatusForbidden, "invite required")
 		return false
-	default:
-		if s.isAdmin(r) {
-			return true
-		}
-		writeError(w, http.StatusForbidden, "bootstrap key required")
-		return false
+	default: // bootstrap: first agent self-registers
+		return true
 	}
 }
 

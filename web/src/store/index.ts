@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import type { Agent, GraphData, ConnectionState } from '../types';
+import type { Agent, GraphData, ConnectionState, TelemetryActivity } from '../types';
 
 interface AppState {
   // Connection
@@ -17,6 +17,10 @@ interface AppState {
   // Graph
   graph: GraphData | null;
   setGraph: (graph: GraphData) => void;
+
+  // Activity feed
+  activity: TelemetryActivity[];
+  setActivity: (activity: TelemetryActivity[]) => void;
 
   // Inspector
   selectedNodeId: string | null;
@@ -57,6 +61,9 @@ export const useAppStore = create<AppState>()(
 
     graph: null,
     setGraph: (graph) => set((state) => { state.graph = graph; }),
+
+    activity: [],
+    setActivity: (activity) => set((state) => { state.activity = activity; }),
 
     selectedNodeId: null,
     setSelectedNodeId: (id) => set((state) => { state.selectedNodeId = id; }),

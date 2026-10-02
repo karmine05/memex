@@ -11,12 +11,6 @@ var graphHTML []byte
 //go:embed skill.md
 var skillMD []byte
 
-func (s *Server) adminHome(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(graphHTML)
-}
-
 // skill is keyless, like /admin/telemetry and /admin/graph: it serves the
 // agent protocol to the operator's browser on the loopback admin listener so
 // the webUI can build a one-prompt install. It is deliberately NOT on the

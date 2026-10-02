@@ -21,32 +21,29 @@ type creds struct {
 	URL      string `json:"url"`
 	AdminURL string `json:"admin_url"`
 	APIKey   string `json:"api_key"`
-	AdminKey string `json:"admin_key"`
 }
 
 type client struct {
 	url      string
 	adminURL string
 	apiKey   string
-	adminKey string
 	token    string
 	exp      time.Time
 	http     *http.Client
 }
 
 func main() {
-	var url, adminURL, apiKey, adminKey string
+	var url, adminURL, apiKey string
 	root := &cobra.Command{Use: "memexctl", SilenceUsage: true}
 	root.PersistentFlags().StringVar(&url, "url", "", "agent API base URL")
 	root.PersistentFlags().StringVar(&adminURL, "admin-url", "", "admin API base URL")
 	root.PersistentFlags().StringVar(&apiKey, "api-key", "", "agent API key")
-	root.PersistentFlags().StringVar(&adminKey, "admin-key", "", "admin API key")
 	root.PersistentPreRun = func(cmd *cobra.Command, _ []string) {
 		ctx := cmd.Context()
 		if ctx == nil {
 			ctx = context.Background()
 		}
-		cmd.SetContext(context.WithValue(ctx, ctxKey{}, loadClient(url, adminURL, apiKey, adminKey)))
+		cmd.SetContext(context.WithValue(ctx, ctxKey{}, loadClient(url, adminURL, apiKey)))
 	}
 	root.AddCommand(
 		registerCmd(), writeCmd(), readCmd(), searchCmd(), dmCmd(), followCmd(), pullCmd(), doctorCmd(), adminCmd(),
@@ -265,10 +262,6 @@ func doctorCmd() *cobra.Command {
 			if code >= 400 && code != http.StatusServiceUnavailable {
 				return check(code, b)
 			}
-			if c.adminKey == "" {
-				fmt.Fprintln(os.Stderr, "admin key not set; skipped /admin/doctor")
-				return nil
-			}
 			code, b, err = c.do(http.MethodGet, c.adminURL, "/admin/doctor", "admin", nil)
 			if err != nil {
 				return err
@@ -338,7 +331,7 @@ func (c *client) do(method, base, path, kind string, body any) (int, []byte, err
 	case "key":
 		token = c.apiKey
 	case "admin":
-		token = c.adminKey
+		token = "" // admin endpoints are keyless
 	}
 	return c.raw(method, base+path, token, body)
 }
@@ -405,7 +398,7 @@ func credPath() string {
 	return filepath.Join(home, ".memex", "credentials.json")
 }
 
-func loadClient(url, adminURL, apiKey, adminKey string) *client {
+func loadClient(url, adminURL, apiKey string) *client {
 	var stored creds
 	if p := credPath(); p != "" {
 		if b, err := os.ReadFile(p); err == nil {
@@ -416,23 +409,7 @@ func loadClient(url, adminURL, apiKey, adminKey string) *client {
 	c.url = first(url, os.Getenv("MEMEX_URL"), stored.URL, "http://127.0.0.1:8843")
 	c.adminURL = first(adminURL, os.Getenv("MEMEX_ADMIN_URL"), stored.AdminURL, "http://127.0.0.1:8844")
 	c.apiKey = first(apiKey, os.Getenv("MEMEX_API_KEY"), stored.APIKey)
-	c.adminKey = first(adminKey, os.Getenv("MEMEX_ADMIN_KEY"), stored.AdminKey, readAdminFile())
 	return c
-}
-
-func readAdminFile() string {
-	paths := []string{"data/admin.key"}
-	if dir := os.Getenv("MEMEX_DATA_DIR"); dir != "" {
-		paths = append([]string{filepath.Join(dir, "admin.key")}, paths...)
-	}
-	for _, p := range paths {
-		b, err := os.ReadFile(p)
-		if err != nil {
-			continue
-		}
-		return strings.TrimSpace(string(b))
-	}
-	return ""
 }
 
 func saveKey(c *client) error {
@@ -443,7 +420,7 @@ func saveKey(c *client) error {
 	if err := os.MkdirAll(filepath.Dir(p), 0700); err != nil {
 		return err
 	}
-	b, err := json.Marshal(creds{URL: c.url, AdminURL: c.adminURL, APIKey: c.apiKey, AdminKey: c.adminKey})
+	b, err := json.Marshal(creds{URL: c.url, AdminURL: c.adminURL, APIKey: c.apiKey})
 	if err != nil {
 		return err
 	}

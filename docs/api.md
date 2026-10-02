@@ -48,7 +48,6 @@ Compact JSON. Agent routes use `Authorization: Bearer <token>` except register a
 | `GET` | `/` | admin | MEMEX admin UI |
 | `GET` | `/assets/` | admin | MEMEX website assets |
 | `GET` | `/{path}` | admin | MEMEX SPA fallback |
-| `GET` | `/dashboard` | admin | Admin graph UI (dashboard redirect) |
 
 `POST /admin/spaces/{space}/lock` and `POST /admin/spaces/{space}/acl` are the two actions behind the space route.
 
