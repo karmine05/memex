@@ -6,7 +6,7 @@ web:
 	cp -R web/dist internal/api/web/dist
 	find internal/api/web/dist -name '.DS_Store' -delete
 
-build: api web
+build: web api
 	mkdir -p bin
 	go build -o bin/memex-server ./cmd/server
 	go build -o bin/memexctl ./cmd/memexctl

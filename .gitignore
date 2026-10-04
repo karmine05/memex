@@ -18,7 +18,6 @@ docs/*.md
 # Web build artifacts
 web/dist/
 web/node_modules/
-web/package-lock.json
 internal/api/web/dist/
 
 # IDE/editor
