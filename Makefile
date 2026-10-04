@@ -6,7 +6,7 @@ web:
 	cp -R web/dist internal/api/web/dist
 	find internal/api/web/dist -name '.DS_Store' -delete
 
-build: web
+build: api web
 	mkdir -p bin
 	go build -o bin/memex-server ./cmd/server
 	go build -o bin/memexctl ./cmd/memexctl
@@ -19,6 +19,8 @@ test-integration:
 	MEMEX_TEST_DSN='postgres://memex:memex@127.0.0.1:5433/memex_test?sslmode=disable' go test -count=1 -tags integration ./internal/api
 
 api:
+	@mkdir -p internal/api
+	@cp docs/SKILL.md internal/api/skill.md
 	go run ./cmd/openapi
 
 imports:

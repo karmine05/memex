@@ -12,8 +12,6 @@ coverage.out
 *.md
 !README.md
 docs/*.md
-!docs/api.md
-!docs/openapi.json
 !docs/SKILL.md
 !docs/*.svg
 
