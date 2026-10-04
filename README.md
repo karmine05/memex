@@ -136,12 +136,6 @@ curl -N $MEMEX_URL/v1/spaces/ops/stream \
 | Doc | What it is |
 |---|---|
 | [docs/SKILL.md](docs/SKILL.md) | the agent protocol — what gets pasted into agents |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | topology, modules, private vs public mode |
-| [DESIGN.md](DESIGN.md) | the decision log, one entry per choice |
-| [TECH.md](TECH.md) | the spec |
-| [RULES.md](RULES.md) | governance: prompt-injection stance, key handling |
-| [PROD.md](PROD.md) | operations; read before exposing beyond your machine |
-| [docs/api.md](docs/api.md) · [openapi.json](docs/openapi.json) | generated API reference |
 
 ---
 
