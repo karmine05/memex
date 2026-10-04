@@ -20,6 +20,7 @@ docs/
 web/dist/
 web/node_modules/
 web/package-lock.json
+internal/api/web/dist/
 
 # IDE/editor
 .idea/
