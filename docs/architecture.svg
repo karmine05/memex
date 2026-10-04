@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 400" font-family="ui-monospace,'SF Mono',Menlo,Consolas,monospace">
+  <defs>
+    <linearGradient id="a-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a101d"/>
+      <stop offset="1" stop-color="#060910"/>
+    </linearGradient>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#5a7bb0"/>
+    </marker>
+    <marker id="arr-g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#43e08a"/>
+    </marker>
+  </defs>
+
+  <rect width="1120" height="400" rx="10" fill="url(#a-bg)" stroke="#1a2540" stroke-width="1.5"/>
+  <text x="30" y="36" font-size="13" letter-spacing="3" fill="#5a6d92">TOPOLOGY · PRIVATE MODE</text>
+
+  <!-- agents -->
+  <g>
+    <rect x="30" y="64" width="190" height="44" rx="9" fill="#0d1626" stroke="#24405f" stroke-width="1.3"/>
+    <circle cx="54" cy="86" r="4" fill="#6fd3ff"/><text x="68" y="91" font-size="14" fill="#dfe6f3">alpha</text>
+    <rect x="30" y="126" width="190" height="44" rx="9" fill="#0d1626" stroke="#24405f" stroke-width="1.3"/>
+    <circle cx="54" cy="148" r="4" fill="#59f28e"/><text x="68" y="153" font-size="14" fill="#dfe6f3">beta</text>
+    <rect x="30" y="188" width="190" height="44" rx="9" fill="#0d1626" stroke="#24405f" stroke-width="1.3"/>
+    <circle cx="54" cy="210" r="4" fill="#ffb14a"/><text x="68" y="215" font-size="14" fill="#dfe6f3">gamma</text>
+    <text x="30" y="258" font-size="11" fill="#4a5a7d">mxk_ keys → 1h tokens</text>
+  </g>
+
+  <!-- server -->
+  <rect x="330" y="52" width="380" height="296" rx="12" fill="#0b1322" stroke="#2b3f63" stroke-width="1.6"/>
+  <text x="352" y="82" font-size="16" fill="#eef4ff" font-weight="700" font-family="'Inter',system-ui,sans-serif">memex-server</text>
+  <text x="352" y="101" font-size="11.5" fill="#5a6d92">Go · single binary · in-process modules</text>
+
+  <rect x="352" y="118" width="160" height="52" rx="8" fill="#0e1a2e" stroke="#3a5b86" stroke-width="1.4"/>
+  <text x="432" y="140" font-size="14" fill="#6fd3ff" text-anchor="middle">:8843</text>
+  <text x="432" y="158" font-size="11" fill="#7d90b5" text-anchor="middle">agent API</text>
+  <rect x="528" y="118" width="160" height="52" rx="8" fill="#132018" stroke="#2f6b4a" stroke-width="1.4"/>
+  <text x="608" y="140" font-size="14" fill="#43e08a" text-anchor="middle">:8844</text>
+  <text x="608" y="158" font-size="11" fill="#6f9c81" text-anchor="middle">admin · 127.0.0.1</text>
+
+  <text x="352" y="196" font-size="11" letter-spacing="1" fill="#5a6d92">auth → rate-limit → audit → handler</text>
+  <line x1="352" y1="206" x2="688" y2="206" stroke="#22345a" stroke-width="1.2"/>
+
+  <g font-size="12" text-anchor="middle">
+    <rect x="352" y="222" width="94" height="42" rx="7" fill="#101b30" stroke="#2c436b"/><text x="399" y="248" fill="#cdeeff">note</text>
+    <rect x="456" y="222" width="94" height="42" rx="7" fill="#101b30" stroke="#2c436b"/><text x="503" y="248" fill="#cdeeff">search</text>
+    <rect x="560" y="222" width="60" height="42" rx="7" fill="#101b30" stroke="#2c436b"/><text x="590" y="248" fill="#cdeeff">feed</text>
+    <rect x="630" y="222" width="58" height="42" rx="7" fill="#101b30" stroke="#2c436b"/><text x="659" y="248" fill="#cdeeff">auth</text>
+  </g>
+  <text x="352" y="290" font-size="11" fill="#4a5a7d">sha256 chain · versions · diff</text>
+  <text x="352" y="308" font-size="11" fill="#4a5a7d">hybrid FTS + vector query builder</text>
+  <text x="352" y="326" font-size="11" fill="#4a5a7d">SSE hub · LISTEN/NOTIFY fan-out</text>
+
+  <!-- admin box -->
+  <rect x="30" y="318" width="190" height="46" rx="9" fill="#101d16" stroke="#2f6b4a" stroke-width="1.3"/>
+  <circle cx="54" cy="341" r="4" fill="#43e08a"/><text x="68" y="346" font-size="13.5" fill="#dfe6f3">admin</text>
+  <text x="30" y="382" font-size="10.5" fill="#4a5a7d">dashboard · + INIT AGENT · audit</text>
+
+  <!-- postgres -->
+  <rect x="820" y="96" width="250" height="104" rx="11" fill="#101b30" stroke="#3a5b86" stroke-width="1.5"/>
+  <text x="945" y="130" font-size="15" fill="#cdeeff" text-anchor="middle" font-weight="700" font-family="'Inter',system-ui,sans-serif">Postgres 16</text>
+  <text x="945" y="152" font-size="11.5" fill="#7d90b5" text-anchor="middle">pgvector · HNSW · FTS</text>
+  <text x="945" y="174" font-size="11" fill="#51648a" text-anchor="middle">docker volume · migrations</text>
+
+  <!-- ollama -->
+  <rect x="820" y="252" width="250" height="86" rx="11" fill="#1a1426" stroke="#5a4a86" stroke-width="1.5"/>
+  <text x="945" y="284" font-size="15" fill="#c9b6ff" text-anchor="middle" font-weight="700" font-family="'Inter',system-ui,sans-serif">Ollama</text>
+  <text x="945" y="306" font-size="11.5" fill="#8a7bb0" text-anchor="middle">nomic-embed-text</text>
+  <text x="945" y="324" font-size="11" fill="#6a5c94" text-anchor="middle">host port 11434</text>
+
+  <!-- arrows -->
+  <g stroke="#5a7bb0" stroke-width="1.6" fill="none">
+    <path d="M220 86  H 300 V 144 H 346" marker-end="url(#arr)"/>
+    <path d="M220 148 H 346" marker-end="url(#arr)"/>
+    <path d="M220 210 H 300 V 148 H 346" marker-end="url(#arr)"/>
+  </g>
+  <text x="234" y="132" font-size="10.5" fill="#6d87b5">REST + SSE</text>
+  <path d="M220 341 H 300 V 162 H 346" stroke="#43e08a" stroke-width="1.5" fill="none" marker-end="url(#arr-g)"/>
+  <text x="224" y="357" font-size="10.5" fill="#4f9c72">keyless reads · mxa_ writes</text>
+
+  <path d="M710 150 H 816" stroke="#5a7bb0" stroke-width="1.6" fill="none" marker-end="url(#arr)"/>
+  <text x="722" y="142" font-size="10.5" fill="#6d87b5">write · search</text>
+  <path d="M710 298 H 790 V 295 H 816" stroke="#8a7bb0" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+  <text x="722" y="290" font-size="10.5" fill="#8a7bb0">4-goroutine embed pool</text>
+</svg>

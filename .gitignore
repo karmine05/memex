@@ -12,9 +12,10 @@ coverage.out
 *.md
 !README.md
 !web/README.md
-docs/
+docs/*.md
 !docs/api.md
 !docs/openapi.json
+!docs/*.svg
 
 # Web build artifacts
 web/dist/
