@@ -1,3 +1,4 @@
+# Build artifacts
 /bin/
 /data/
 /deploy/data/
@@ -6,3 +7,35 @@
 .env
 coverage.out
 .planning/
+
+# Documentation (local only, except README.md)
+*.md
+!README.md
+!web/README.md
+docs/
+!docs/api.md
+!docs/openapi.json
+
+# Web build artifacts
+web/dist/
+web/node_modules/
+web/package-lock.json
+
+# IDE/editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Temporary files
+--width
+*.tmp
+*.temp
+
+# Test fixtures and sample data (local only)
+**/*testdata*/
+**/*fixture*/
+**/*sample*/
+**/*example*/
+**/eval/
+docs/eval/
