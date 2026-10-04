@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ShaderGradientCanvas, ShaderGradient } from '@shadergradient/react'
+import { MatrixRain } from './MatrixRain'
 
 interface Health {
   status: string
@@ -56,6 +57,21 @@ const STEPS = [
   },
 ]
 
+const FIRST_CONTACT = `# 1. write a versioned note
+curl -sX POST $MEMEX_URL/v1/notes \\
+  -H "Authorization: Bearer $TOKEN" \\
+  -d '{"space":"ops","body":{"status":"green"}}'
+
+# 2. search across every agent's memory
+curl -sX POST $MEMEX_URL/v1/search \\
+  -H "Authorization: Bearer $TOKEN" \\
+  -d '{"query":"deploy checklist","space":"ops"}'
+
+# 3. follow changes, resume where you left off
+curl -N $MEMEX_URL/v1/spaces/ops/stream \\
+  -H "Authorization: Bearer $TOKEN" \\
+  -H "Last-Event-ID: 4211"`
+
 export function LandingPage() {
   const [health, setHealth] = useState<Health | null>(null)
   const reduceMotion = typeof window !== 'undefined'
@@ -99,6 +115,7 @@ export function LandingPage() {
         />
       </ShaderGradientCanvas>
       <div className="fixed inset-0 z-[1] pointer-events-none bg-gradient-to-b from-bg/50 via-bg/30 to-bg" aria-hidden="true" />
+      <MatrixRain className="fixed inset-0 z-[2]" opacity={0.11} />
 
       <div className="relative z-10">
         {/* Nav */}
@@ -117,13 +134,14 @@ export function LandingPage() {
 
         {/* Hero */}
         <section className="mx-auto max-w-5xl px-6 pb-20 pt-24 sm:pt-32">
-          <p className="font-mono text-xs uppercase tracking-[0.3em] text-accent mb-5">
+          <p className="inline-flex items-center gap-2 glass rounded-full px-4 py-1.5 font-mono text-[11px] uppercase tracking-[0.24em] text-accent mb-6">
+            <span className="w-1.5 h-1.5 rounded-full bg-term animate-pulse" aria-hidden="true" />
             self-hosted · append-only · hash-chained
           </p>
           <h1 className="font-ui text-5xl font-bold leading-[1.05] tracking-tight text-text text-balance sm:text-7xl">
             Memory that outlives
             <br />
-            the <span className="text-accent">chat</span>.
+            the <span className="text-accent phosphor">chat</span>.
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-relaxed text-textMuted text-balance">
             MEMEX is a shared, searchable store where agents write versioned notes,
@@ -133,7 +151,7 @@ export function LandingPage() {
           </p>
           <div className="mt-9 flex flex-wrap items-center gap-3">
             <a href="/dash" className="btn-init text-sm px-6 py-2.5">Open Dashboard</a>
-            <a href="/skill.md" className="glass rounded-full px-5 py-2.5 font-mono text-sm text-text hover:text-accent transition-colors">
+            <a href="/skill.md" className="sheen glass rounded-full px-5 py-2.5 font-mono text-sm text-text hover:text-accent transition-colors">
               Read the protocol →
             </a>
           </div>
@@ -146,7 +164,7 @@ export function LandingPage() {
               ['live streams', stat(health?.streams ?? 0)],
               ['embedder', health ? (health.embedder === 'ok' ? 'online' : health.embedder) : '—'],
             ].map(([label, value]) => (
-              <div key={label} className="glass rounded-2xl px-4 py-3">
+              <div key={label} className="sheen glass rounded-2xl px-4 py-3">
                 <dt className="label mb-0">{label}</dt>
                 <dd className="font-mono text-xl text-text">{value}</dd>
               </div>
@@ -164,7 +182,7 @@ export function LandingPage() {
           </p>
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map(f => (
-              <article key={f.title} className="glass rounded-2xl p-5 transition-transform hover:-translate-y-0.5">
+              <article key={f.title} className="sheen glass rounded-2xl p-5 transition-transform hover:-translate-y-0.5">
                 <h3 className="font-ui text-lg font-semibold text-text">{f.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-textMuted">{f.body}</p>
               </article>
@@ -195,29 +213,24 @@ export function LandingPage() {
                 ))}
               </ol>
             </div>
-            <div className="glass-strong rounded-2xl p-1.5">
-              <div className="flex items-center gap-1.5 px-3 py-2">
+            <div
+              className="crt glass-strong rounded-2xl overflow-hidden"
+              style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), inset 0 0 70px rgba(61,255,158,0.07), 0 24px 60px -16px rgba(0,0,0,0.8), 0 0 40px -16px rgba(61,255,158,0.4)' }}
+            >
+              <div className="relative z-10 flex items-center gap-1.5 px-3 py-2 border-b border-term/15 bg-black/35">
                 <span className="h-2.5 w-2.5 rounded-full bg-bad/70" />
                 <span className="h-2.5 w-2.5 rounded-full bg-warn/70" />
                 <span className="h-2.5 w-2.5 rounded-full bg-ok/70" />
-                <span className="ml-2 font-mono text-xs text-textMuted">agent, first contact</span>
+                <span className="ml-2 font-mono text-[11px] tracking-wider text-term/80 phosphor">agent@memex — first contact</span>
               </div>
-              <pre className="overflow-x-auto rounded-xl bg-bg/80 p-4 font-mono text-xs leading-relaxed text-text">
-{`# 1. write a versioned note
-curl -sX POST $MEMEX_URL/v1/notes \\
-  -H "Authorization: Bearer $TOKEN" \\
-  -d '{"space":"ops","body":{"status":"green"}}'
-
-# 2. search across every agent's memory
-curl -sX POST $MEMEX_URL/v1/search \\
-  -H "Authorization: Bearer $TOKEN" \\
-  -d '{"query":"deploy checklist","space":"ops"}'
-
-# 3. follow changes, resume where you left off
-curl -N $MEMEX_URL/v1/spaces/ops/stream \\
-  -H "Authorization: Bearer $TOKEN" \\
-  -H "Last-Event-ID: 4211"`}
+              <pre className="relative z-10 overflow-x-auto bg-black/30 p-4 font-mono text-xs leading-relaxed text-term/85">
+{FIRST_CONTACT.split('\n').map((line, i) => (
+  <div key={i} className={line.trimStart().startsWith('#') ? 'text-term/40' : undefined}>{line || ' '}</div>
+))}
               </pre>
+              <div className="relative z-10 px-4 py-2 border-t border-term/15 bg-black/35 font-mono text-[11px] text-term/50">
+                operator@memex:~$ <span className="cursor-block" aria-hidden="true" />
+              </div>
             </div>
           </div>
         </section>

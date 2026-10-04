@@ -1,14 +1,16 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg: #0a0e17;
-  --color-bgElevated: #0f141f;
-  --color-border: #1e293b;
-  --color-borderAccent: #064e8b;
-  --color-text: #e2e8f0;
-  --color-textMuted: #64748b;
+  --color-bg: #060910;
+  --color-bgElevated: #0c1120;
+  --color-border: #1c2740;
+  --color-borderAccent: #0a5f9e;
+  --color-text: #e6edf7;
+  --color-textMuted: #6b7a93;
   --color-accent: #00d4ff;
-  --color-accentDim: #00d4ff33;
+  --color-accentDim: #00d4ff26;
+  --color-term: #3dff9e;
+  --color-termDim: #3dff9e26;
   --color-ok: #4ade80;
   --color-warn: #fbbf24;
   --color-bad: #f87171;
@@ -17,13 +19,18 @@
   --font-ui: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
 
   --blur-glass: 20px;
-  --shadow-glass: inset 0 1px 0 rgba(255,255,255,0.24), inset 0 -1px 0 rgba(0,0,0,0.25), 0 18px 50px rgba(0,0,0,0.55);
-  --glass-gradient: linear-gradient(150deg, rgba(255,255,255,0.09), rgba(255,255,255,0.02) 38%, rgba(111,211,255,0.05));
+  --shadow-glass: inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -1px 0 rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.4), 0 18px 50px -12px rgba(0,0,0,0.7);
+  --glass-gradient: radial-gradient(130% 90% at 50% -20%, rgba(255,255,255,0.10), transparent 55%),
+    linear-gradient(160deg, rgba(255,255,255,0.05), rgba(255,255,255,0) 32%),
+    linear-gradient(150deg, rgba(111,211,255,0.05), rgba(255,255,255,0) 60%);
 
   --animate-panelIn: panelIn 0.7s cubic-bezier(0.2, 0.9, 0.25, 1) both;
   --animate-fadeIn: fadeIn 0.2s ease-out;
   --animate-slideUp: slideUp 0.3s cubic-bezier(0.2, 0.9, 0.25, 1);
   --animate-cardIn: cardIn 0.45s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+  --animate-blink: blink 1.1s steps(2, start) infinite;
+  --animate-crtFlicker: crtFlicker 5s linear infinite;
+  --animate-riseGlow: riseGlow 0.9s cubic-bezier(0.2, 0.9, 0.25, 1) both;
 
   @keyframes panelIn {
     from { opacity: 0; transform: translateY(12px); }
@@ -40,6 +47,21 @@
   @keyframes slideUp {
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: none; }
+  }
+  @keyframes blink {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0; }
+  }
+  @keyframes crtFlicker {
+    0%, 100% { opacity: 1; }
+    4% { opacity: 0.96; }
+    8% { opacity: 1; }
+    56% { opacity: 0.985; }
+    60% { opacity: 1; }
+  }
+  @keyframes riseGlow {
+    from { opacity: 0; transform: translateY(10px); filter: blur(6px); }
+    to { opacity: 1; transform: none; filter: none; }
   }
 }
 
@@ -124,23 +146,108 @@
   ::-webkit-scrollbar-thumb:hover { background: var(--color-textMuted); }
 }
 
+@layer components {
+  /* Diagonal specular sweep on hover — the "wet" glass read.
+     In the components layer so positioning utilities (e.g. `absolute`) win. */
+  .sheen { position: relative; overflow: hidden; }
+  .sheen::after {
+    content: '';
+    position: absolute;
+    top: -20%;
+    bottom: -20%;
+    left: 0;
+    width: 45%;
+    pointer-events: none;
+    background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.14), transparent);
+    transform: translateX(-160%) skewX(-18deg);
+    transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .sheen:hover::after { transform: translateX(260%) skewX(-18deg); }
+
+  /* ---- CRT terminal ---------------------------------------------------- */
+  /* Scanlines + phosphor bloom. Put on a relatively-positioned container. */
+  .crt { position: relative; }
+  .crt::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.24) 0px,
+      rgba(0, 0, 0, 0.24) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    mix-blend-mode: multiply;
+    opacity: 0.6;
+  }
+  .crt::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: radial-gradient(130% 100% at 50% 0%, rgba(61, 255, 158, 0.07), transparent 62%);
+    box-shadow: inset 0 0 70px rgba(61, 255, 158, 0.09);
+  }
+}
+
 @layer utilities {
+  /* ---- Liquid glass ---------------------------------------------------- */
   .glass {
-    background-color: color-mix(in srgb, var(--color-bgElevated) 70%, transparent);
-    backdrop-filter: blur(var(--blur-glass));
-    border: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+    background-color: color-mix(in srgb, var(--color-bgElevated) 62%, transparent);
+    backdrop-filter: blur(var(--blur-glass)) saturate(150%);
+    -webkit-backdrop-filter: blur(var(--blur-glass)) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: var(--shadow-glass);
     background-image: var(--glass-gradient);
   }
 
   .glass-strong {
-    background-color: color-mix(in srgb, var(--color-bgElevated) 80%, transparent);
-    backdrop-filter: blur(var(--blur-glass));
-    border: 1px solid color-mix(in srgb, var(--color-borderAccent) 50%, transparent);
-    box-shadow: var(--shadow-glass);
+    background-color: color-mix(in srgb, var(--color-bgElevated) 78%, transparent);
+    backdrop-filter: blur(var(--blur-glass)) saturate(160%);
+    -webkit-backdrop-filter: blur(var(--blur-glass)) saturate(160%);
+    border: 1px solid color-mix(in srgb, var(--color-borderAccent) 45%, transparent);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.16),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+      0 1px 2px rgba(0, 0, 0, 0.4),
+      0 18px 50px -12px rgba(0, 0, 0, 0.7),
+      0 0 40px -18px color-mix(in srgb, var(--color-accent) 45%, transparent);
     background-image: var(--glass-gradient);
   }
 
+  .phosphor {
+    text-shadow:
+      0 0 4px color-mix(in srgb, currentColor 55%, transparent),
+      0 0 18px color-mix(in srgb, currentColor 28%, transparent);
+  }
+
+  .cursor-block::after {
+    content: '█';
+    margin-left: 2px;
+    animation: var(--animate-blink);
+    color: var(--color-term);
+  }
+
+  /* ---- Backgrounds ----------------------------------------------------- */
+  .bg-grid {
+    background-image:
+      linear-gradient(rgba(148, 197, 255, 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 197, 255, 0.045) 1px, transparent 1px);
+    background-size: 44px 44px;
+  }
+
+  .text-gradient-accent {
+    background: linear-gradient(100deg, #ffffff 0%, #cfeeff 45%, var(--color-accent) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* ---- Controls -------------------------------------------------------- */
   .btn {
     display: inline-flex;
     align-items: center;
@@ -159,6 +266,8 @@
   .btn-primary:active { transform: scale(0.98); }
 
   .btn-init {
+    position: relative;
+    overflow: hidden;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -178,12 +287,25 @@
       0 4px 18px rgba(0, 212, 255, 0.28);
     transition: all 150ms cubic-bezier(0.2, 0.9, 0.25, 1);
   }
+  .btn-init::after {
+    content: '';
+    position: absolute;
+    top: -30%;
+    bottom: -30%;
+    left: 0;
+    width: 40%;
+    pointer-events: none;
+    background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+    transform: translateX(-180%) skewX(-18deg);
+    transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
   .btn-init:hover {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.6),
       0 0 22px rgba(0, 212, 255, 0.55);
     transform: translateY(-1px);
   }
+  .btn-init:hover::after { transform: translateX(320%) skewX(-18deg); }
   .btn-init:active { transform: translateY(0) scale(0.98); }
   .btn-init:disabled { opacity: 0.5; cursor: default; transform: none; }
 
@@ -207,8 +329,8 @@
     width: 100%;
     padding: 0.5rem 0.75rem;
     border-radius: 0.5rem;
-    background-color: var(--color-bg);
-    border: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+    background-color: color-mix(in srgb, var(--color-bg) 70%, transparent);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     color: var(--color-text);
     font-family: var(--font-mono);
     font-size: 0.875rem;
@@ -217,7 +339,7 @@
   .input::placeholder { color: var(--color-textMuted); }
   .input:focus {
     outline: none;
-    box-shadow: 0 0 0 2px var(--color-accent);
+    box-shadow: 0 0 0 2px var(--color-accent), 0 0 24px -6px var(--color-accent);
     border-color: var(--color-accent);
   }
 
@@ -245,11 +367,13 @@
   .badge-warn { background-color: color-mix(in srgb, var(--color-warn) 20%, transparent); color: var(--color-warn); border: 1px solid color-mix(in srgb, var(--color-warn) 30%, transparent); }
   .badge-bad { background-color: color-mix(in srgb, var(--color-bad) 20%, transparent); color: var(--color-bad); border: 1px solid color-mix(in srgb, var(--color-bad) 30%, transparent); }
   .badge-dim { background-color: var(--color-border); color: var(--color-textMuted); border: 1px solid var(--color-border); }
+  .badge-term { background-color: color-mix(in srgb, var(--color-term) 14%, transparent); color: var(--color-term); border: 1px solid color-mix(in srgb, var(--color-term) 30%, transparent); }
 
   .panel {
-    background-color: color-mix(in srgb, var(--color-bgElevated) 70%, transparent);
-    backdrop-filter: blur(var(--blur-glass));
-    border: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+    background-color: color-mix(in srgb, var(--color-bgElevated) 62%, transparent);
+    backdrop-filter: blur(var(--blur-glass)) saturate(150%);
+    -webkit-backdrop-filter: blur(var(--blur-glass)) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: var(--shadow-glass);
     background-image: var(--glass-gradient);
     border-radius: 1rem;
@@ -258,10 +382,16 @@
   }
 
   .panel-strong {
-    background-color: color-mix(in srgb, var(--color-bgElevated) 80%, transparent);
-    backdrop-filter: blur(var(--blur-glass));
-    border: 1px solid color-mix(in srgb, var(--color-borderAccent) 50%, transparent);
-    box-shadow: var(--shadow-glass);
+    background-color: color-mix(in srgb, var(--color-bgElevated) 82%, transparent);
+    backdrop-filter: blur(var(--blur-glass)) saturate(160%);
+    -webkit-backdrop-filter: blur(var(--blur-glass)) saturate(160%);
+    border: 1px solid color-mix(in srgb, var(--color-borderAccent) 45%, transparent);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.16),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+      0 1px 2px rgba(0, 0, 0, 0.4),
+      0 18px 50px -12px rgba(0, 0, 0, 0.7),
+      0 0 40px -18px color-mix(in srgb, var(--color-accent) 45%, transparent);
     background-image: var(--glass-gradient);
     border-radius: 1rem;
     padding: 1rem;

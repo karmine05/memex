@@ -1,5 +1,6 @@
 import { useAppStore } from '../store';
 import { Graph3D } from './Graph3D';
+import { Terminal } from './Terminal';
 import type { GraphData } from '../types';
 
 export function GraphPane() {
@@ -22,11 +23,14 @@ export function GraphPane() {
       role="main"
       aria-label="Memory Graph"
     >
-      <div className="flex items-center justify-between p-3 border-b border-border/50 glass bg-bg/50 shrink-0">
-        <h3 className="font-ui font-semibold text-sm tracking-wider text-textMuted uppercase">Memory Graph</h3>
-        <span className="font-mono text-xs text-textMuted">
-          {graph ? `${graph.edges.length} link${graph.edges.length !== 1 ? 's' : ''}` : '—'}
-        </span>
+      <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-white/5 glass bg-bg/40 shrink-0">
+        <h2 className="font-mono text-xs tracking-[0.22em] text-textMuted uppercase">
+          <span className="text-accent">❯</span> Memory Graph
+        </h2>
+        <span className="badge badge-dim font-mono text-[10px]">{graph ? `${graph.nodes.length} nodes` : '—'}</span>
+        <span className="badge badge-dim font-mono text-[10px]">{graph ? `${graph.edges.length} link${graph.edges.length !== 1 ? 's' : ''}` : '—'}</span>
+        <span className="flex-1" />
+        <span className="font-mono text-[10px] text-textMuted/70 hidden lg:block">drag rotate · scroll zoom · Z zen</span>
       </div>
 
       <div className="flex-1 relative overflow-hidden">
@@ -45,6 +49,10 @@ export function GraphPane() {
         {graph && graph.nodes.length > 0 && (
           <GraphLegend nodes={graph.nodes} selectedId={selectedNodeId} onSelect={setSelectedNodeId} />
         )}
+        <Terminal
+          activity={activity}
+          className="absolute bottom-4 left-4 z-20 w-[min(30rem,calc(100%-2rem))] hidden sm:block"
+        />
       </div>
     </main>
   );

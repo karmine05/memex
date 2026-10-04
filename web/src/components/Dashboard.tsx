@@ -4,6 +4,8 @@ import { ApiError, api, clearAdminKey, getAdminKey, setAdminKey } from '../utils
 import { AdminKeyModal } from './AdminKeyModal';
 import { AgentCard } from './AgentCard';
 import { GraphPane } from './GraphPane';
+import { HeroStrip } from './HeroStrip';
+import { MatrixRain } from './MatrixRain';
 import { TopBar } from './TopBar';
 import { CommandPalette } from './CommandPalette';
 
@@ -18,7 +20,7 @@ export function Dashboard() {
   // /admin/agents, which returns 401 while the gate is closed.
   const [needsAdminKey, setNeedsAdminKey] = useState(!getAdminKey());
   const [adminKeyValue, setAdminKeyValue] = useState('');
-  const { setConnectionStatus, setAgents, setGraph, setActivity, isZenMode } = useAppStore();
+  const { setConnectionStatus, setAgents, setGraph, setActivity, setHealth, isZenMode } = useAppStore();
 
   // A 401 mid-session means the key was rotated/revoked: drop it and re-lock.
   const handleAuthError = (err: unknown): boolean => {
@@ -40,6 +42,7 @@ export function Dashboard() {
         if (!alive) return;
         setAgents(data.agents);
         setActivity(data.activity);
+        setHealth(data.health);
         setConnectionStatus('connected');
       } catch (err) {
         if (!alive) return;
@@ -49,7 +52,7 @@ export function Dashboard() {
     load();
     const timer = setInterval(load, TELEMETRY_INTERVAL_MS);
     return () => { alive = false; clearInterval(timer); };
-  }, [needsAdminKey, setAgents, setActivity, setConnectionStatus]);
+  }, [needsAdminKey, setAgents, setActivity, setHealth, setConnectionStatus]);
 
   // Graph poll
   useEffect(() => {
@@ -82,10 +85,14 @@ export function Dashboard() {
   }
 
   return (
-    <div className="h-full w-full flex flex-col" data-zen={isZenMode}>
-      <TopBar />
-      <div className="flex-1 flex overflow-hidden">
-        <GraphPane />
+    <div className="relative h-full w-full flex flex-col overflow-hidden" data-zen={isZenMode}>
+      <MatrixRain className="fixed inset-0 z-0" opacity={0.13} />
+      <div className="relative z-10 flex-1 flex flex-col min-h-0">
+        <TopBar />
+        <HeroStrip />
+        <div className="flex-1 flex overflow-hidden min-h-0">
+          <GraphPane />
+        </div>
       </div>
       <AgentCard />
       <CommandPalette />

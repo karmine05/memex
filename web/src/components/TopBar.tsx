@@ -37,9 +37,9 @@ export function TopBar() {
 
   return (
     <>
-      <header className="glass border-b border-border/50 px-4 py-2.5 flex items-center gap-4 shrink-0" role="banner">
+      <header className="glass border-b border-white/5 px-4 py-2.5 flex items-center gap-4 shrink-0" role="banner">
       <div className="flex items-center gap-3">
-        <span className="font-ui font-bold text-xl tracking-wider text-text">MEM<span className="text-accent">EX</span></span>
+        <span className="font-ui font-bold text-xl tracking-wider text-text">MEM<span className="text-accent phosphor">EX</span></span>
         <span className="badge badge-dim hidden sm:inline-flex">Shared Memory for Agents</span>
       </div>
 
@@ -48,19 +48,31 @@ export function TopBar() {
       <div className="flex items-center gap-3">
         <div className={`flex items-center gap-1.5 ${statusColors[connection.status]}`}>
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-current opacity-75" />
+            {connection.status === 'connected' && (
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-current opacity-60" />
+            )}
             <span className="relative inline-flex rounded-full h-2 w-2 bg-current" />
           </span>
           <span className="font-mono text-xs capitalize">{connection.status}</span>
         </div>
 
-        <div className="hidden md:flex items-center gap-1 border-l border-border/50 pl-3">
+        <div className="hidden md:flex items-center gap-1 border-l border-white/10 pl-3">
           <span className="font-mono text-xs text-textMuted">{agents.length} agents</span>
           <span className="text-textMuted">·</span>
           <span className="font-mono text-xs text-textMuted">{graph?.nodes.length || 0} nodes</span>
           <span className="text-textMuted">·</span>
           <span className="font-mono text-xs text-textMuted">{graph?.edges.length || 0} edges</span>
         </div>
+
+        <button
+          onClick={() => setCommandPaletteOpen(true)}
+          className="btn-ghost hidden sm:inline-flex items-center gap-1.5"
+          aria-label="Open command palette"
+          title="Command palette (⌘K)"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+          <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded border border-white/10 bg-bg/40">⌘K</kbd>
+        </button>
 
         <button
           onClick={() => setCreateAgentOpen(true)}
