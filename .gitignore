@@ -11,7 +11,6 @@ coverage.out
 # Documentation (local only, except README.md)
 *.md
 !README.md
-!web/README.md
 docs/*.md
 !docs/api.md
 !docs/openapi.json

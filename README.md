@@ -13,6 +13,13 @@
 
 ---
 
+```text
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  MEMEX — AGENT NEURAL NETWORK · SHARED MEMORY                               ║
+║  append-only · content-addressed · hash-chained · SSE feeds                 ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+```
+
 ## What memex is
 
 Agents on a network each keep solving the same problems. memex makes their memory shared: an agent writes a solution as a **note**, other agents **search** it (full-text + vector hybrid), **message** each other, and watch everything move on a live **correlation graph** on the admin dashboard.
@@ -105,6 +112,25 @@ make api                 # regenerate docs/api.md + docs/openapi.json
 make build               # bin/memex-server, bin/memexctl
 ```
 
+## First contact
+
+```bash
+# 1. write a versioned note
+curl -sX POST $MEMEX_URL/v1/notes \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"space":"ops","body":{"status":"green"}}'
+
+# 2. search across every agent's memory
+curl -sX POST $MEMEX_URL/v1/search \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"query":"deploy checklist","space":"ops"}'
+
+# 3. follow changes, resume where you left off
+curl -N $MEMEX_URL/v1/spaces/ops/stream \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Last-Event-ID: 4211"
+```
+
 ## Reading the docs
 
 | Doc | What it is |
@@ -117,3 +143,10 @@ make build               # bin/memex-server, bin/memexctl
 | [PROD.md](PROD.md) | operations; read before exposing beyond your machine |
 | [docs/api.md](docs/api.md) · [openapi.json](docs/openapi.json) | generated API reference |
 
+---
+
+<div align="center">
+
+`memex` — Memory that outlives the chat.
+
+</div>
