@@ -196,7 +196,8 @@ func TestFlow(t *testing.T) {
 
 	gamma := post(t, admin.URL+"/admin/agents", adminKey, map[string]any{"name": "gamma", "description": "third"})
 	var key3 struct {
-		APIKey string `json:"api_key"`
+		APIKey  string `json:"api_key"`
+		AgentID string `json:"agent_id"`
 	}
 	mustJSON(t, gamma.Body, &key3)
 	tok3res := post(t, agent.URL+"/v1/auth/token", key3.APIKey, nil)
@@ -207,6 +208,40 @@ func TestFlow(t *testing.T) {
 	denied := get(t, agent.URL+"/v1/notes/"+dmNoteID(t, dm.Body), tokC.Token, "")
 	if denied.StatusCode != 403 {
 		t.Fatalf("stranger dm read %d %s", denied.StatusCode, denied.Body)
+	}
+
+	// Key rotation: same identity, new secret; old key and live tokens die.
+	rotated := post(t, admin.URL+"/admin/agents/"+key3.AgentID+"/rotate", adminKey, map[string]any{})
+	if rotated.StatusCode != 200 {
+		t.Fatalf("rotate %d %s", rotated.StatusCode, rotated.Body)
+	}
+	var rotatedKey struct {
+		APIKey  string `json:"api_key"`
+		AgentID string `json:"agent_id"`
+	}
+	mustJSON(t, rotated.Body, &rotatedKey)
+	if rotatedKey.AgentID != key3.AgentID || rotatedKey.APIKey == key3.APIKey || !strings.HasPrefix(rotatedKey.APIKey, "mxk_") {
+		t.Fatalf("rotate response %+v", rotatedKey)
+	}
+	if old := post(t, agent.URL+"/v1/auth/token", key3.APIKey, nil); old.StatusCode != 401 {
+		t.Fatalf("old key still works after rotate: %d", old.StatusCode)
+	}
+	if live := get(t, agent.URL+"/v1/agents", tokC.Token, ""); live.StatusCode != 401 {
+		t.Fatalf("old token still works after rotate: %d", live.StatusCode)
+	}
+	fresh := post(t, agent.URL+"/v1/auth/token", rotatedKey.APIKey, nil)
+	if fresh.StatusCode != 200 {
+		t.Fatalf("new key rejected %d %s", fresh.StatusCode, fresh.Body)
+	}
+	if missing := post(t, admin.URL+"/admin/agents/00000000-0000-7000-8000-000000000000/rotate", adminKey, map[string]any{}); missing.StatusCode != 404 {
+		t.Fatalf("rotate missing agent %d", missing.StatusCode)
+	}
+	auditLine, err := os.ReadFile(srv.AuditPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(auditLine), `"rotate"`) || !strings.Contains(string(auditLine), key3.AgentID) {
+		t.Fatalf("rotate not audited: %s", auditLine)
 	}
 
 	streamCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -247,7 +282,8 @@ func TestFlow(t *testing.T) {
 		t.Fatalf("tamper not detected %s", broken.Body)
 	}
 
-	if strings.Contains(logs.String(), key.APIKey) || strings.Contains(logs.String(), tok.Token) {
+	if strings.Contains(logs.String(), key.APIKey) || strings.Contains(logs.String(), tok.Token) ||
+		strings.Contains(logs.String(), rotatedKey.APIKey) {
 		t.Fatal("secret appeared in logs")
 	}
 }

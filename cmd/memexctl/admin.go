@@ -17,7 +17,7 @@ func adminCmd() *cobra.Command {
 	cmd := &cobra.Command{Use: "admin"}
 	cmd.AddCommand(
 		adminAgents(), adminCreate(), adminStats(), adminSimple("revoke", "/revoke"),
-		adminSimple("suspend", "/suspend"), adminSimple("resume", "/resume"),
+		adminSimple("rotate", "/rotate"), adminSimple("suspend", "/suspend"), adminSimple("resume", "/resume"),
 		adminNote(), adminDiff(), adminReaders(), adminAudit(), adminVerify(), adminPurge(),
 		adminReembed(), adminOrphans(), adminDupes(), adminEval(), adminSpace(), adminVolume(),
 		adminSkill(),

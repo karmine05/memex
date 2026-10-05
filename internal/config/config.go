@@ -107,6 +107,9 @@ func (c Config) validate() error {
 	default:
 		return fmt.Errorf("registration %q", c.Registration)
 	}
+	if c.Registration == "open" && os.Getenv("MEMEX_ALLOW_OPEN") != "true" {
+		return fmt.Errorf("open registration lets anyone who can reach the port register an agent; set MEMEX_ALLOW_OPEN=true to confirm")
+	}
 	switch c.Embed.Provider {
 	case "ollama", "openai", "none":
 	default:

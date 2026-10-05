@@ -51,3 +51,26 @@ public:
 		t.Fatal("dsn should redact a password")
 	}
 }
+
+func TestOpenRegistrationRequiresExplicitOptIn(t *testing.T) {
+	os.Unsetenv("MEMEX_ALLOW_OPEN")
+	t.Cleanup(func() { os.Unsetenv("MEMEX_ALLOW_OPEN") })
+	dir := t.TempDir()
+	for _, mode := range []string{"public", "private"} {
+		path := filepath.Join(dir, mode+".yml")
+		if err := os.WriteFile(path, []byte("mode: "+mode+"\npublic:\n  registration: open\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := Load(path); err == nil {
+			t.Fatalf("%s+open must refuse to boot without MEMEX_ALLOW_OPEN=true", mode)
+		}
+	}
+	t.Setenv("MEMEX_ALLOW_OPEN", "true")
+	cfg, err := Load(filepath.Join(dir, "public.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Registration != "open" {
+		t.Fatalf("opt-in should load open registration: %+v", cfg)
+	}
+}

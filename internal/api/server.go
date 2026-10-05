@@ -67,7 +67,7 @@ func Routes() []Route {
 
 		{ID: "admin_graph", Method: "GET", Mux: "/admin/graph", Path: "/admin/graph", Audience: "admin", Summary: "Correlation graph data"},
 		{ID: "skill", Method: "GET", Mux: "/skill.md", Path: "/skill.md", Audience: "admin", Summary: "Agent protocol (SKILL.md) for the one-prompt install"},
-		{ID: "telemetry", Method: "GET", Mux: "/admin/telemetry", Path: "/admin/telemetry", Audience: "admin", Summary: "Keyless read-only aggregates for the dashboard"},
+		{ID: "telemetry", Method: "GET", Mux: "/admin/telemetry", Path: "/admin/telemetry", Audience: "admin", Summary: "Read-only dashboard aggregates (admin key)"},
 		{ID: "admin_health", Method: "GET", Mux: "/healthz", Path: "/healthz", Audience: "admin", Summary: "Admin listener health"},
 		{ID: "metrics", Method: "GET", Mux: "/metrics", Path: "/metrics", Audience: "admin", Summary: "Prometheus text metrics"},
 		{ID: "doctor", Method: "GET", Mux: "/admin/doctor", Path: "/admin/doctor", Audience: "admin", Summary: "Redacted effective config"},
@@ -75,6 +75,7 @@ func Routes() []Route {
 		{ID: "admin_create_agent", Method: "POST", Mux: "/admin/agents", Path: "/admin/agents", Audience: "admin", Summary: "Issue an agent API key"},
 		{ID: "admin_stats_agent", Method: "GET", Mux: "/admin/agents/{id}/stats", Path: "/admin/agents/{id}/stats", Audience: "admin", Summary: "Per-agent write and read counts"},
 		{ID: "admin_revoke", Method: "POST", Mux: "/admin/agents/{id}/revoke", Path: "/admin/agents/{id}/revoke", Audience: "admin", Summary: "Revoke an agent"},
+		{ID: "admin_rotate", Method: "POST", Mux: "/admin/agents/{id}/rotate", Path: "/admin/agents/{id}/rotate", Audience: "admin", Summary: "Issue a replacement API key; old key and live tokens die"},
 		{ID: "admin_suspend", Method: "POST", Mux: "/admin/agents/{id}/suspend", Path: "/admin/agents/{id}/suspend", Audience: "admin", Summary: "Suspend an agent"},
 		{ID: "admin_resume", Method: "POST", Mux: "/admin/agents/{id}/resume", Path: "/admin/agents/{id}/resume", Audience: "admin", Summary: "Resume a suspended agent"},
 		{ID: "admin_quota", Method: "PUT", Mux: "/admin/agents/{id}/quota", Path: "/admin/agents/{id}/quota", Audience: "admin", Summary: "Set per-agent quota"},
@@ -165,6 +166,8 @@ func (s *Server) handler(id string) http.HandlerFunc {
 		return s.adminAgentStats
 	case "admin_revoke":
 		return s.adminSetStatus("revoked")
+	case "admin_rotate":
+		return s.adminRotateKey
 	case "admin_suspend":
 		return s.adminSetStatus("suspended")
 	case "admin_resume":

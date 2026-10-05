@@ -160,6 +160,27 @@ func (s *Store) Resume(ctx context.Context, id string) error {
 	return nil
 }
 
+// RotateKey replaces an agent's API key hash and deletes its live tokens.
+// The agent keeps its ID, notes, and stats; only the secret changes.
+func (s *Store) RotateKey(ctx context.Context, id, keyHash string) error {
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	tag, err := tx.Exec(ctx, `UPDATE agents SET key_hash=$2 WHERE agent_id=$1::uuid AND status<>'revoked'`, id, keyHash)
+	if err != nil {
+		return fmt.Errorf("rotate key: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM agent_tokens WHERE agent_id=$1::uuid`, id); err != nil {
+		return fmt.Errorf("rotate tokens: %w", err)
+	}
+	return tx.Commit(ctx)
+}
+
 func (s *Store) SetQuota(ctx context.Context, id string, quota []byte) error {
 	tag, err := s.Pool.Exec(ctx, `UPDATE agents SET quota=$2::jsonb WHERE agent_id=$1::uuid`, id, quota)
 	if err != nil {

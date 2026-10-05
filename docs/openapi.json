@@ -19,6 +19,9 @@
     "/admin/agents/{id}/revoke": {
       "post": {"summary": "Revoke an agent", "responses": {"200": {"description": "ok"}}, "security": [{"bearer": []}]}
     },
+    "/admin/agents/{id}/rotate": {
+      "post": {"summary": "Issue a replacement API key; old key and live tokens die", "responses": {"200": {"description": "ok"}}, "security": [{"bearer": []}]}
+    },
     "/admin/agents/{id}/stats": {
       "get": {"summary": "Per-agent write and read counts", "responses": {"200": {"description": "ok"}}, "security": [{"bearer": []}]}
     },
@@ -69,7 +72,7 @@
       "get": {"summary": "Volume for a space or the instance", "responses": {"200": {"description": "ok"}}, "security": [{"bearer": []}]}
     },
     "/admin/telemetry": {
-      "get": {"summary": "Keyless read-only aggregates for the dashboard", "responses": {"200": {"description": "ok"}}}
+      "get": {"summary": "Read-only dashboard aggregates (admin key)", "responses": {"200": {"description": "ok"}}, "security": [{"bearer": []}]}
     },
     "/assets/": {
       "get": {"summary": "MEMEX website assets", "responses": {"200": {"description": "ok"}}, "security": [{"bearer": []}]}

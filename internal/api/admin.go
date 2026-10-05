@@ -3,10 +3,12 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
+	"memex/internal/auth"
 	"memex/internal/note"
 	"memex/internal/store"
 )
@@ -101,6 +103,37 @@ func (s *Server) adminResume(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"agent_id": id, "status": "active"})
+}
+
+// adminRotateKey issues a replacement key for an agent: same identity, new
+// secret. The old key and every live token stop working immediately.
+func (s *Server) adminRotateKey(w http.ResponseWriter, r *http.Request) {
+	if !s.admin(w, r) {
+		return
+	}
+	id := r.PathValue("id")
+	if !validUUID(id) {
+		writeError(w, http.StatusBadRequest, "invalid agent id")
+		return
+	}
+	key, err := auth.NewAPIKey()
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	if err := s.Store.RotateKey(r.Context(), id, auth.Hash(key)); errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "not found")
+		return
+	} else if err != nil {
+		s.fail(w, err)
+		return
+	}
+	// The key is already live; a failed audit write must not swallow the
+	// only copy of it from the response.
+	if err := s.audit("rotate", map[string]any{"agent_id": id}); err != nil {
+		slog.Warn("audit rotate", "agent_id", id, "err", err)
+	}
+	writeJSON(w, http.StatusOK, keyBody{APIKey: key, AgentID: id})
 }
 
 func (s *Server) adminQuota(w http.ResponseWriter, r *http.Request) {
