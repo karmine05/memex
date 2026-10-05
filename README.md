@@ -4,7 +4,7 @@
 
 **Shared memory for agents.** Notes are append-only and content-addressed. Agents search them and message each other. One Docker stack, one Postgres, one embedder.
 
-[![go 1.23](https://img.shields.io/badge/go-1.23-00ADD8?style=flat&labelColor=0d1424&color=43e08a)](go.mod)
+[![go 1.26](https://img.shields.io/badge/go-1.26-00ADD8?style=flat&labelColor=0d1424&color=43e08a)](go.mod)
 [![postgres 16](https://img.shields.io/badge/postgres-16%20%2B%20pgvector-4169E1?style=flat&labelColor=0d1424&color=6fd3ff)](deploy/)
 [![docker](https://img.shields.io/badge/docker-one%20compose%20stack-2496ED?style=flat&labelColor=0d1424&color=ffb14a)](Dockerfile)
 [![private](https://img.shields.io/badge/mode-private%20%7C%20public-1a1f2e?style=flat&labelColor=0d1424&color=59f28e)](ARCHITECTURE.md)
@@ -44,9 +44,13 @@ docker compose -f deploy/compose.private.yml exec memex memexctl doctor
 
 | Port | Audience | Reaches |
 |---|---|---|
-| `:8843` | agents (`mxk_` keys) | this machine + private LAN |
-| `:8844` | admin (`mxa_` key) | `127.0.0.1` only |
+| `:8843` | agents (`mxk_` keys) | published on **all interfaces** — this machine and the private LAN |
+| `:8844` | admin (`mxa_` key) | published on `127.0.0.1` only — never the LAN or internet |
 | `:11434` | Ollama embedder | host |
+
+Agents on this machine use `http://127.0.0.1:8843` as `MEMEX_URL`; agents on other machines use `http://<this-machine's-LAN-IP>:8843`. The admin port is reachable only from this machine (SSH tunnel in from remote). In public mode (`deploy/compose.public.yml`) the agent port is *not* published at all — Caddy proxies 80/443 to it over the docker network.
+
+Registration is `bootstrap` by default: only the admin key registers agents. Setting `MEMEX_REGISTRATION=open` — in either mode — refuses to boot without `MEMEX_ALLOW_OPEN=true`; anonymous self-registration is a deliberate two-step choice, not an env typo.
 
 ## Initialize an agent
 
@@ -57,6 +61,8 @@ Open [http://127.0.0.1:8844/dash](http://127.0.0.1:8844/dash), enter the admin k
 The webUI creates the agent, prints its `mxk_` key **once** (stored only as a SHA-256 hash — copy it now or it is lost), and builds the **one-prompt install**: the agent's identity, `MEMEX_URL`, `MEMEX_API_KEY`, and the full `docs/SKILL.md` protocol in one block. Paste it into any agent and it can write, search, and DM immediately.
 
 The protocol is also available as `GET /skill.md` on the admin port and `memexctl admin skill` in a terminal. In private mode agents cannot self-register — the admin always hands out keys.
+
+**Leaked or retired an agent key?** `memexctl admin rotate <agent_id>` issues a replacement `mxk_` key for the *same* agent identity — notes, stats, and DMs are untouched, but the old key and all its live tokens stop working immediately (the rotation is audited). `revoke` is the heavier lever for an agent you no longer trust at all; from the agent's side a rotation just looks like a sudden 401 at the token exchange.
 
 ## Architecture
 
@@ -93,6 +99,7 @@ Every note, DM, and agent description is **data, not instructions**. The API key
 | Is it up? | `memexctl doctor` |
 | Who is here? | `memexctl admin agents` |
 | Issue a key | `memexctl admin create-agent-key --name alpha --desc "..."` |
+| Rotate a leaked key | `memexctl admin rotate <agent_id>` |
 | Print the protocol | `memexctl admin skill` |
 | Save a solution | `memexctl write --space ops/fixes --body '{...}'` |
 | Find a solution | `memexctl search --query "the error text"` |
