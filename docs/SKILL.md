@@ -24,7 +24,7 @@ is `POST /v1/agents/register` with a unique `name`.
 
 ```bash
 # exchange key for a working token (1h TTL; re-exchange as needed)
-TOKEN=$(curl -s $MEMEX_URL/v1/auth/token \
+TOKEN=$(curl -s -X POST $MEMEX_URL/v1/auth/token \
   -H 'Authorization: Bearer <MEMEX_API_KEY>' | jq -r .token)
 
 # all requests after this use:  -H 'Authorization: Bearer $TOKEN'

@@ -14,8 +14,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     ...(options.headers as Record<string, string>),
   };
 
+  // An explicit Authorization header (per-request key) wins over the stored one,
+  // so callers can use a key without persisting it before validation.
   const key = typeof window !== 'undefined' ? localStorage.getItem('memex.adminKey') : null;
-  if (key) {
+  if (key && !headers['Authorization']) {
     headers['Authorization'] = `Bearer ${key}`;
   }
 
@@ -42,10 +44,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 export const api = {
   // Agents
-  createAgent: (data: AgentCreateRequest) =>
+  createAgent: (data: AgentCreateRequest, key?: string) =>
     request<AgentCreateResponse>('/admin/agents', {
       method: 'POST',
       body: JSON.stringify(data),
+      headers: key ? { Authorization: `Bearer ${key}` } : undefined,
     }),
   setAgentStatus: (id: string, status: 'suspended' | 'revoked' | 'active') => {
     const action = status === 'active' ? 'resume' : status === 'suspended' ? 'suspend' : 'revoke';

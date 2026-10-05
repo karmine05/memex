@@ -180,14 +180,18 @@ function CreateAgentModal({ onClose }: { onClose: () => void }) {
       setError('Agent API URL must be http(s)://host:port');
       return;
     }
-    if (adminKey.trim()) setAdminKey(adminKey.trim());
+    // Use the typed key for this request, but persist it only after the server
+    // accepts it: storing an unvalidated key lets the next telemetry poll 401
+    // and re-lock the whole dashboard mid-modal.
+    const key = adminKey.trim() || getAdminKey() || '';
     setLoading(true);
     setError('');
     try {
       const [skill, res] = await Promise.all([
         api.getSkill(),
-        api.createAgent({ name: name.trim(), description: description.trim() }),
+        api.createAgent({ name: name.trim(), description: description.trim() }, key || undefined),
       ]);
+      if (adminKey.trim()) setAdminKey(adminKey.trim());
       setResult({
         prompt: buildPrompt(name.trim(), description.trim(), url.trim(), res.api_key, res.agent_id, skill),
         apiKey: res.api_key,
