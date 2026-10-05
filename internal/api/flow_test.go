@@ -282,6 +282,45 @@ func TestFlow(t *testing.T) {
 		t.Fatalf("tamper not detected %s", broken.Body)
 	}
 
+	// Revoking an agent removes it from operational views: no graph node or
+	// edge may reference it, and recent activity drops its rows. beta has a
+	// "sent" edge (its DM), an "used" edge from alpha's inbox read, and the
+	// read below adds a beta→alpha "used" edge — all must disappear.
+	if r := get(t, agent.URL+"/v1/notes/"+wrote.NoteID, tokB.Token, ""); r.StatusCode != 200 {
+		t.Fatalf("beta read %d %s", r.StatusCode, r.Body)
+	}
+	if rev := post(t, admin.URL+"/admin/agents/"+key2.AgentID+"/revoke", adminKey, map[string]any{}); rev.StatusCode != 200 {
+		t.Fatalf("revoke %d %s", rev.StatusCode, rev.Body)
+	}
+	gv := struct {
+		Nodes []struct {
+			ID string `json:"id"`
+		} `json:"nodes"`
+		Edges []struct {
+			From string `json:"from"`
+			To   string `json:"to"`
+		} `json:"edges"`
+	}{}
+	graphRes := get(t, admin.URL+"/admin/graph", adminKey, "")
+	if graphRes.StatusCode != 200 {
+		t.Fatalf("graph %d %s", graphRes.StatusCode, graphRes.Body)
+	}
+	mustJSON(t, graphRes.Body, &gv)
+	for _, n := range gv.Nodes {
+		if n.ID == key2.AgentID {
+			t.Fatal("revoked agent still in graph nodes")
+		}
+	}
+	for _, e := range gv.Edges {
+		if e.From == key2.AgentID || e.To == key2.AgentID {
+			t.Fatalf("revoked agent still referenced by edge %+v", e)
+		}
+	}
+	telemetry := get(t, admin.URL+"/admin/telemetry", adminKey, "")
+	if strings.Contains(telemetry.Body, `"beta"`) {
+		t.Fatal("revoked agent still in telemetry activity")
+	}
+
 	if strings.Contains(logs.String(), key.APIKey) || strings.Contains(logs.String(), tok.Token) ||
 		strings.Contains(logs.String(), rotatedKey.APIKey) {
 		t.Fatal("secret appeared in logs")

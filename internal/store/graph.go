@@ -103,6 +103,21 @@ func (s *Store) Graph(ctx context.Context) (Graph, error) {
 		return g, err
 	}
 	g.Edges = append(g.Edges, cited...)
+
+	// Revoked agents are operationally removed: nodes already exclude them,
+	// so drop edges that reference one. Without this a revoked agent leaves
+	// edges pointing at nodes the dashboard never renders.
+	active := make(map[string]bool, len(g.Nodes))
+	for _, n := range g.Nodes {
+		active[n.ID] = true
+	}
+	kept := g.Edges[:0]
+	for _, e := range g.Edges {
+		if active[e.From] && active[e.To] {
+			kept = append(kept, e)
+		}
+	}
+	g.Edges = kept
 	return g, nil
 }
 
@@ -197,6 +212,7 @@ func (s *Store) RecentActivity(ctx context.Context, limit int) ([]Activity, erro
 		SELECT nv.agent_id::text, a.name, nv.space_id, nv.created_at
 		FROM note_versions nv
 		JOIN agents a ON a.agent_id = nv.agent_id
+		WHERE a.status <> 'revoked'
 		ORDER BY nv.created_at DESC
 		LIMIT $1`, limit)
 	if err != nil {
@@ -233,6 +249,7 @@ func (s *Store) RecentActivity(ctx context.Context, limit int) ([]Activity, erro
 		JOIN note_versions nv ON nv.note_id = r.note_id AND nv.version = r.version
 		JOIN agents wa ON wa.agent_id = nv.agent_id
 		WHERE r.agent_id <> nv.agent_id
+		  AND ra.status <> 'revoked' AND wa.status <> 'revoked'
 		ORDER BY r.read_at DESC
 		LIMIT $1`, limit)
 	if err != nil {
