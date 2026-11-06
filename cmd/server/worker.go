@@ -92,18 +92,67 @@ func embedBatch(ctx context.Context, st *store.Store, emb search.Embedder, loop 
 	}
 	vecs, err := emb.Embed(ctx, texts)
 	if err != nil {
-		return err
+		return fallbackPerRow(ctx, st, emb, kept, texts, err)
 	}
+	var lastErr error
+	failed := 0
 	for i := range kept {
-		lit, err := search.VectorLiteral(vecs[i])
-		if err != nil {
-			return err
+		if err := persistEmbedding(ctx, st, kept[i], vecs[i]); err != nil {
+			failed++
+			lastErr = err
+			slog.Error("persist embed", "note", kept[i].NoteID, "version", kept[i].Version, "err", err)
 		}
-		if err := st.SetEmbedding(ctx, kept[i].NoteID, kept[i].Version, lit); err != nil {
-			return err
-		}
+	}
+	// Every persist failed: the DB, not the embedder, is the problem.
+	// Surface it so the loop backs off instead of spinning at tick rate.
+	if failed == len(kept) {
+		return lastErr
 	}
 	return nil
+}
+
+// fallbackPerRow retries a rejected batch one row at a time, so a single
+// poison row (over-context body, model error) cannot hold the other
+// fifteen. A failed row only burns an attempt when sibling rows
+// succeeded in the same pass — that proves the embedder was up and the
+// failure is about that row's content, which is what the
+// MaxEmbedAttempts dead-letter is for. On a full outage nothing is
+// recorded, the backlog stays intact, and the batch error makes the loop
+// back off.
+func fallbackPerRow(ctx context.Context, st *store.Store, emb search.Embedder, kept []store.Version, texts []string, batchErr error) error {
+	sawSuccess := false
+	var failed []store.Version
+	for i := range kept {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		vecs, err := emb.Embed(ctx, texts[i:i+1])
+		if err != nil {
+			failed = append(failed, kept[i])
+			continue
+		}
+		sawSuccess = true
+		if err := persistEmbedding(ctx, st, kept[i], vecs[0]); err != nil {
+			slog.Error("persist embed", "note", kept[i].NoteID, "version", kept[i].Version, "err", err)
+		}
+	}
+	if sawSuccess {
+		for _, v := range failed {
+			if err := st.RecordEmbedAttempt(ctx, v.NoteID, v.Version); err != nil {
+				slog.Warn("record embed attempt", "err", err)
+			}
+		}
+		return nil
+	}
+	return batchErr
+}
+
+func persistEmbedding(ctx context.Context, st *store.Store, v store.Version, vec []float32) error {
+	lit, err := search.VectorLiteral(vec)
+	if err != nil {
+		return err
+	}
+	return st.SetEmbedding(ctx, v.NoteID, v.Version, lit)
 }
 
 func maintain(ctx context.Context, st *store.Store) {

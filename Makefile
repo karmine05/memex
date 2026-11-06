@@ -16,7 +16,7 @@ test:
 	go run ./scripts/checkimports.go
 
 test-integration:
-	MEMEX_TEST_DSN='postgres://memex:memex@127.0.0.1:5433/memex_test?sslmode=disable' go test -count=1 -tags integration ./internal/api
+	MEMEX_TEST_DSN='postgres://memex:memex@127.0.0.1:5433/memex_test?sslmode=disable' go test -count=1 -tags integration ./internal/api ./cmd/server
 
 api:
 	@mkdir -p internal/api

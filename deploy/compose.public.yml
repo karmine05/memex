@@ -35,6 +35,11 @@ services:
       MEMEX_EMBED_MODEL: nomic-embed-text
       MEMEX_DATA_DIR: /data
       MEMEX_REGISTRATION: invite
+      # Caddy is the only edge in front of the agent API, so its
+      # X-Forwarded-For may be trusted for per-client rate-limit keys.
+      # 172.16.0.0/12 covers all default docker subnets; narrow to the
+      # actual subnet (docker network inspect) to shrink the spoof window.
+      MEMEX_TRUSTED_PROXIES: 172.16.0.0/12
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:

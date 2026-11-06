@@ -21,29 +21,32 @@ type creds struct {
 	URL      string `json:"url"`
 	AdminURL string `json:"admin_url"`
 	APIKey   string `json:"api_key"`
+	AdminKey string `json:"admin_key"`
 }
 
 type client struct {
 	url      string
 	adminURL string
 	apiKey   string
+	adminKey string
 	token    string
 	exp      time.Time
 	http     *http.Client
 }
 
 func main() {
-	var url, adminURL, apiKey string
+	var url, adminURL, apiKey, adminKey string
 	root := &cobra.Command{Use: "memexctl", SilenceUsage: true}
 	root.PersistentFlags().StringVar(&url, "url", "", "agent API base URL")
 	root.PersistentFlags().StringVar(&adminURL, "admin-url", "", "admin API base URL")
 	root.PersistentFlags().StringVar(&apiKey, "api-key", "", "agent API key")
+	root.PersistentFlags().StringVar(&adminKey, "admin-key", "", "admin key (mxa_)")
 	root.PersistentPreRun = func(cmd *cobra.Command, _ []string) {
 		ctx := cmd.Context()
 		if ctx == nil {
 			ctx = context.Background()
 		}
-		cmd.SetContext(context.WithValue(ctx, ctxKey{}, loadClient(url, adminURL, apiKey)))
+		cmd.SetContext(context.WithValue(ctx, ctxKey{}, loadClient(url, adminURL, apiKey, adminKey)))
 	}
 	root.AddCommand(
 		registerCmd(), writeCmd(), readCmd(), searchCmd(), dmCmd(), followCmd(), pullCmd(), doctorCmd(), adminCmd(),
@@ -331,7 +334,12 @@ func (c *client) do(method, base, path, kind string, body any) (int, []byte, err
 	case "key":
 		token = c.apiKey
 	case "admin":
-		token = "" // admin endpoints are keyless
+		// Every /admin/* route is gated by the mxa_ key; there is no
+		// keyless admin surface (loopback binding is the only extra wall).
+		if c.adminKey == "" {
+			return 0, nil, errors.New("admin key required: --admin-key, MEMEX_ADMIN_KEY, or stored credentials")
+		}
+		token = c.adminKey
 	}
 	return c.raw(method, base+path, token, body)
 }
@@ -398,7 +406,7 @@ func credPath() string {
 	return filepath.Join(home, ".memex", "credentials.json")
 }
 
-func loadClient(url, adminURL, apiKey string) *client {
+func loadClient(url, adminURL, apiKey, adminKey string) *client {
 	var stored creds
 	if p := credPath(); p != "" {
 		if b, err := os.ReadFile(p); err == nil {
@@ -409,6 +417,7 @@ func loadClient(url, adminURL, apiKey string) *client {
 	c.url = first(url, os.Getenv("MEMEX_URL"), stored.URL, "http://127.0.0.1:8843")
 	c.adminURL = first(adminURL, os.Getenv("MEMEX_ADMIN_URL"), stored.AdminURL, "http://127.0.0.1:8844")
 	c.apiKey = first(apiKey, os.Getenv("MEMEX_API_KEY"), stored.APIKey)
+	c.adminKey = first(adminKey, os.Getenv("MEMEX_ADMIN_KEY"), stored.AdminKey)
 	return c
 }
 
@@ -420,7 +429,7 @@ func saveKey(c *client) error {
 	if err := os.MkdirAll(filepath.Dir(p), 0700); err != nil {
 		return err
 	}
-	b, err := json.Marshal(creds{URL: c.url, AdminURL: c.adminURL, APIKey: c.apiKey})
+	b, err := json.Marshal(creds{URL: c.url, AdminURL: c.adminURL, APIKey: c.apiKey, AdminKey: c.adminKey})
 	if err != nil {
 		return err
 	}

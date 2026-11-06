@@ -23,14 +23,20 @@ import (
 	"memex/internal/store"
 )
 
-func TestFlow(t *testing.T) {
+// newHarness is the standard integration setup: a fresh database,
+// bootstrap registration, a disabled embedder, and separate agent/admin
+// listeners. Every integration test starts here so the setup exists in
+// exactly one place.
+func newHarness(t *testing.T) (srv *Server, agent, admin *httptest.Server, st *store.Store, adminKey string) {
+	t.Helper()
 	dsn := os.Getenv("MEMEX_TEST_DSN")
 	if dsn == "" {
 		t.Fatal("MEMEX_TEST_DSN is required")
 	}
 	ctx := context.Background()
 	resetDB(t, dsn)
-	st, err := store.Open(ctx, dsn)
+	var err error
+	st, err = store.Open(ctx, dsn)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,22 +51,28 @@ func TestFlow(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("listen did not become ready")
 	}
-	adminKey, err := auth.NewAdminKey()
+	adminKey, err = auth.NewAdminKey()
 	if err != nil {
 		t.Fatal(err)
 	}
 	cfg := config.Default()
 	cfg.Registration = "bootstrap"
 	cfg.Embed.Provider = "none"
-	srv := &Server{
+	srv = &Server{
 		Cfg: cfg, Store: st, Hub: hub, Embed: search.None{},
 		AdminHash: auth.Hash(adminKey), Limit: NewLimiter(),
 		AuditPath: t.TempDir() + "/audit.log",
 	}
-	agent := httptest.NewServer(srv.Handler("agent"))
+	agent = httptest.NewServer(srv.Handler("agent"))
 	t.Cleanup(agent.Close)
-	admin := httptest.NewServer(srv.Handler("admin"))
+	admin = httptest.NewServer(srv.Handler("admin"))
 	t.Cleanup(admin.Close)
+	return
+}
+
+func TestFlow(t *testing.T) {
+	ctx := context.Background()
+	srv, agent, admin, st, adminKey := newHarness(t)
 
 	var logs bytes.Buffer
 	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
