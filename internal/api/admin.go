@@ -82,6 +82,11 @@ func (s *Server) adminSetStatus(status string) http.HandlerFunc {
 			s.fail(w, err)
 			return
 		}
+		// The agent's identity just changed: any open SSE connection must
+		// stop delivering, it authenticated once and is not re-checked.
+		if s.Hub != nil {
+			s.Hub.CancelAgent(id)
+		}
 		writeJSON(w, http.StatusOK, map[string]any{"agent_id": id, "status": status})
 	}
 }
@@ -132,6 +137,11 @@ func (s *Server) adminRotateKey(w http.ResponseWriter, r *http.Request) {
 	// only copy of it from the response.
 	if err := s.audit("rotate", map[string]any{"agent_id": id}); err != nil {
 		slog.Warn("audit rotate", "agent_id", id, "err", err)
+	}
+	// Rotation kills the old credential; streams that opened under it stop
+	// now, not at client disconnect.
+	if s.Hub != nil {
+		s.Hub.CancelAgent(id)
 	}
 	writeJSON(w, http.StatusOK, keyBody{APIKey: key, AgentID: id})
 }
@@ -498,9 +508,18 @@ func (s *Server) adminSpace(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, "acl object required")
 			return
 		}
+		if !note.ValidACL(raw) {
+			writeError(w, http.StatusBadRequest, `acl must be {"read":[ids],"write":[ids],"locked":bool}; lists must be arrays of agent ids`)
+			return
+		}
 		if err := s.Store.SetSpaceACL(r.Context(), space, raw); err != nil {
 			s.fail(w, err)
 			return
+		}
+		// The read policy just changed: subscriptions that authenticated
+		// before the change must not keep delivering on the old grant.
+		if s.Hub != nil {
+			s.Hub.CancelSpace(space)
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"space": space, "acl": raw})
 	default:

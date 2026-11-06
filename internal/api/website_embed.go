@@ -93,6 +93,12 @@ func WebsiteHandler() http.Handler {
 			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 		}
 
+		// The dashboard is frame-hostile: the admin SPA auto-attaches the
+		// mxa_ key from localStorage to every request, so a framed /dash is
+		// a clickjacking surface (one-click Suspend). Deny framing outright.
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Content-Security-Policy", "frame-ancestors 'none'")
+
 		// Serve the file directly - ensure it implements ReadSeeker
 		rs, ok := f.(io.ReadSeeker)
 		if !ok {

@@ -21,36 +21,86 @@ type Event struct {
 	CreatedAt string `json:"created_at"`
 }
 
+// sub is one live SSE subscription, bound to the agent that opened it so
+// revocation, suspension, rotation, and space ACL changes can tear it down.
+type sub struct {
+	ch    chan Event
+	agent string
+	done  chan struct{}
+	once  sync.Once
+}
+
+func (s *sub) stop() { s.once.Do(func() { close(s.done) }) }
+
 type Hub struct {
 	mu    sync.Mutex
-	subs  map[string]map[chan Event]struct{}
+	subs  map[string]map[*sub]struct{}
 	ready chan struct{}
 	once  sync.Once
 }
 
 func New() *Hub {
 	return &Hub{
-		subs:  map[string]map[chan Event]struct{}{},
+		subs:  map[string]map[*sub]struct{}{},
 		ready: make(chan struct{}),
 	}
 }
 
 func (h *Hub) Ready() <-chan struct{} { return h.ready }
 
-func (h *Hub) Subscribe(key string) (<-chan Event, func()) {
-	ch := make(chan Event, 256)
+// Subscribe registers under key for the owning agent. The returned done
+// channel is closed when the subscription is cancelled by any path
+// (client disconnect, agent lifecycle, or space ACL change).
+func (h *Hub) Subscribe(key, agent string) (<-chan Event, <-chan struct{}, func()) {
+	s := &sub{ch: make(chan Event, 256), agent: agent, done: make(chan struct{})}
 	h.mu.Lock()
 	if h.subs[key] == nil {
-		h.subs[key] = map[chan Event]struct{}{}
+		h.subs[key] = map[*sub]struct{}{}
 	}
-	h.subs[key][ch] = struct{}{}
+	h.subs[key][s] = struct{}{}
 	h.mu.Unlock()
 	cancel := func() {
 		h.mu.Lock()
-		delete(h.subs[key], ch)
+		if m := h.subs[key]; m != nil {
+			delete(m, s)
+		}
 		h.mu.Unlock()
+		s.stop()
 	}
-	return ch, cancel
+	return s.ch, s.done, cancel
+}
+
+// CancelAgent tears down every stream owned by the agent. Called on
+// revocation, suspension, and key rotation: an identity that no longer
+// exists must not keep receiving change events on old connections.
+func (h *Hub) CancelAgent(agent string) {
+	h.mu.Lock()
+	var dead []*sub
+	for key, m := range h.subs {
+		for s := range m {
+			if s.agent == agent {
+				delete(h.subs[key], s)
+				dead = append(dead, s)
+			}
+		}
+	}
+	h.mu.Unlock()
+	for _, s := range dead {
+		s.stop()
+	}
+}
+
+// CancelSpace stops every space stream on the given space, used after an
+// ACL replace: the old grant no longer describes who may see the feed.
+func (h *Hub) CancelSpace(space string) {
+	key := "space:" + space
+	h.mu.Lock()
+	dead := h.subs[key]
+	delete(h.subs, key)
+	h.mu.Unlock()
+	for s := range dead {
+		s.stop()
+	}
 }
 
 func (h *Hub) Subscribers() int {
@@ -76,7 +126,8 @@ func (h *Hub) Publish(ev Event) {
 func (h *Hub) send(key string, ev Event) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	for ch := range h.subs[key] {
+	for s := range h.subs[key] {
+		ch := s.ch
 		select {
 		case ch <- ev:
 		default:

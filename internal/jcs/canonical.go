@@ -24,6 +24,15 @@ var asciiEscapes = []byte{'\\', '"', 'b', 'f', 'n', 'r', 't'}
 var binaryEscapes = []byte{'\\', '"', '\b', '\f', '\n', '\r', '\t'}
 var literals = []string{"true", "false", "null"}
 
+// Cost bounds. The upstream parser is quadratic in key count and nesting
+// depth (sorted insertion, per-level re-copy); every note body is parsed
+// before the byte-size reject, so the bounds here are the server's
+// per-request CPU bound, not a style choice. Real notes sit far below both.
+const (
+	maxNestingDepth = 128
+	maxMembers      = 10000
+)
+
 // Transform returns the JCS form of a JSON object or array.
 func Transform(jsonData []byte) ([]byte, error) {
 	jsonDataLength := len(jsonData)
@@ -35,6 +44,8 @@ func Transform(jsonData []byte) ([]byte, error) {
 	var parseQuotedString func() string
 	var parseObject func() string
 	var parseArray func() string
+
+	depth := 0
 
 	checkError := func(e error) {
 		if globalError == nil {
@@ -190,6 +201,12 @@ func Transform(jsonData []byte) ([]byte, error) {
 		return value
 	}
 	parseElement = func() string {
+		depth++
+		if depth > maxNestingDepth {
+			setError("json nesting exceeds max depth")
+			return "null"
+		}
+		defer func() { depth-- }()
 		switch scan() {
 		case '{':
 			return parseObject()
@@ -205,7 +222,13 @@ func Transform(jsonData []byte) ([]byte, error) {
 		var arrayData strings.Builder
 		arrayData.WriteByte('[')
 		next := false
+		count := 0
 		for globalError == nil && testNext() != ']' {
+			if count >= maxMembers {
+				setError("array exceeds member limit")
+				break
+			}
+			count++
 			if next {
 				scanFor(',')
 				arrayData.WriteByte(',')
@@ -245,6 +268,10 @@ func Transform(jsonData []byte) ([]byte, error) {
 		next := false
 	CoreLoop:
 		for globalError == nil && testNext() != '}' {
+			if nameValueList.Len() >= maxMembers {
+				setError("object exceeds member limit")
+				break
+			}
 			if next {
 				scanFor(',')
 			}

@@ -52,6 +52,49 @@ public:
 	}
 }
 
+func TestNoteMaxBytesIsBounded(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "memex.yml")
+	if err := os.WriteFile(path, []byte("limits:\n  note_max_bytes: 1073741824\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load(path); err == nil {
+		t.Fatal("note_max_bytes above the hard ceiling must refuse to boot")
+	}
+	if err := os.WriteFile(path, []byte("limits:\n  note_max_bytes: 1048576\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Limits.NoteMaxBytes != MaxNoteBytes {
+		t.Fatalf("ceiling not accepted: %+v", cfg.Limits)
+	}
+}
+
+func TestTrustedProxiesFromEnvAndYAML(t *testing.T) {
+	t.Setenv("MEMEX_TRUSTED_PROXIES", "10.0.0.5, 172.16.0.0/12")
+	cfg := Default()
+	applyEnv(&cfg)
+	if len(cfg.TrustedProxies) != 2 || cfg.TrustedProxies[0] != "10.0.0.5" || cfg.TrustedProxies[1] != "172.16.0.0/12" {
+		t.Fatalf("%+v", cfg.TrustedProxies)
+	}
+	dir := t.TempDir()
+	path := filepath.Join(dir, "memex.yml")
+	if err := os.WriteFile(path, []byte("trusted_proxies:\n  - 10.1.2.3\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// env wins over file
+	if len(got.TrustedProxies) != 2 {
+		t.Fatalf("%+v", got.TrustedProxies)
+	}
+}
+
 func TestOpenRegistrationRequiresExplicitOptIn(t *testing.T) {
 	os.Unsetenv("MEMEX_ALLOW_OPEN")
 	t.Cleanup(func() { os.Unsetenv("MEMEX_ALLOW_OPEN") })

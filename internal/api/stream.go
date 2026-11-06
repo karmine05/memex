@@ -36,10 +36,15 @@ func (s *Server) spaceStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err == nil && !note.Can(sp.ACL, ag.ID, false) {
-		writeError(w, http.StatusForbidden, "forbidden")
+		// A restricted space answers exactly like a nonexistent one: the
+		// same 200 SSE shape, no replay, no live subscription. 403-vs-200
+		// would enumerate which agent pairs have exchanged DMs (space names
+		// are deterministic), and a live subscription would leak per-change
+		// metadata the read ACL withholds.
+		s.serveQuietStream(w, r)
 		return
 	}
-	s.serveStream(w, r, "space:"+space, func(after int64) ([]store.StreamRow, error) {
+	s.serveStream(w, r, "space:"+space, ag.ID, func(after int64) ([]store.StreamRow, error) {
 		return s.Store.EventsAfter(r.Context(), space, after, 200)
 	})
 }
@@ -49,9 +54,38 @@ func (s *Server) inboxStream(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	s.serveStream(w, r, "inbox:"+ag.ID, func(after int64) ([]store.StreamRow, error) {
+	s.serveStream(w, r, "inbox:"+ag.ID, ag.ID, func(after int64) ([]store.StreamRow, error) {
 		return s.Store.InboxEvents(r.Context(), ag.ID, after, 200)
 	})
+}
+
+// serveQuietStream is the uniform empty stream: same 200/SSE shape as a
+// live one, but with no hub subscription and no replay, so it cannot
+// disclose existence or per-change metadata of spaces the caller may not
+// read. It exists so subscribe-before-exist (open spaces) and ACL-denied
+// spaces are indistinguishable on the wire.
+func (s *Server) serveQuietStream(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	rc := http.NewResponseController(w)
+	fmt.Fprintf(w, ": connected\n\n")
+	_ = rc.Flush()
+	ping := time.NewTicker(15 * time.Second)
+	defer ping.Stop()
+	max := time.NewTimer(streamMaxLifetime)
+	defer max.Stop()
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case <-max.C:
+			return
+		case <-ping.C:
+			fmt.Fprintf(w, "event: ping\ndata: {}\n\n")
+			_ = rc.Flush()
+		}
+	}
 }
 
 func (s *Server) inbox(w http.ResponseWriter, r *http.Request) {
@@ -101,7 +135,12 @@ func (s *Server) inbox(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"notes": out})
 }
 
-func (s *Server) serveStream(w http.ResponseWriter, r *http.Request, key string, replay func(int64) ([]store.StreamRow, error)) {
+// streamMaxLifetime bounds one SSE connection. It matches the one-hour
+// token TTL: a revoked or rotated agent gets no stream longer than its
+// credentials, and well-behaved clients resume via Last-Event-ID.
+const streamMaxLifetime = time.Hour
+
+func (s *Server) serveStream(w http.ResponseWriter, r *http.Request, key, agent string, replay func(int64) ([]store.StreamRow, error)) {
 	if s.Hub == nil {
 		writeError(w, http.StatusServiceUnavailable, "stream unavailable")
 		return
@@ -119,7 +158,7 @@ func (s *Server) serveStream(w http.ResponseWriter, r *http.Request, key string,
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 	rc := http.NewResponseController(w)
-	ch, cancel := s.Hub.Subscribe(key)
+	ch, done, cancel := s.Hub.Subscribe(key, agent)
 	defer cancel()
 	fmt.Fprintf(w, ": connected\n\n")
 	_ = rc.Flush()
@@ -136,9 +175,15 @@ func (s *Server) serveStream(w http.ResponseWriter, r *http.Request, key string,
 	_ = rc.Flush()
 	ping := time.NewTicker(15 * time.Second)
 	defer ping.Stop()
+	max := time.NewTimer(streamMaxLifetime)
+	defer max.Stop()
 	for {
 		select {
 		case <-r.Context().Done():
+			return
+		case <-done:
+			return
+		case <-max.C:
 			return
 		case ev := <-ch:
 			if ev.ID <= after {

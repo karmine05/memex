@@ -19,10 +19,14 @@ type Config struct {
 	DB           string
 	DataDir      string
 	Registration string
-	Embed        Embed
-	Search       Search
-	Limits       Limits
-	Invites      []string
+	// TrustedProxies lists IPs/CIDRs of reverse proxies (public mode, Caddy)
+	// whose X-Forwarded-For may be used for per-client rate-limit keys.
+	// Empty means RemoteAddr only — the safe default.
+	TrustedProxies []string
+	Embed          Embed
+	Search         Search
+	Limits         Limits
+	Invites        []string
 }
 
 type Embed struct {
@@ -96,6 +100,11 @@ func Load(path string) (Config, error) {
 	return cfg, nil
 }
 
+// MaxNoteBytes is the hard ceiling on limits.note_max_bytes. The JCS parser
+// runs on every body before the 64KiB post-parse reject, so this knob is a
+// CPU-cost knob; capping it keeps one request from pinning a core.
+const MaxNoteBytes = 1024 * 1024
+
 func (c Config) validate() error {
 	switch c.Mode {
 	case "private", "public":
@@ -120,6 +129,9 @@ func (c Config) validate() error {
 	}
 	if c.Limits.NoteMaxBytes <= 0 || c.Limits.RequestsPerMinute <= 0 {
 		return fmt.Errorf("limits must be positive")
+	}
+	if c.Limits.NoteMaxBytes > MaxNoteBytes {
+		return fmt.Errorf("note_max_bytes must be at most %d", MaxNoteBytes)
 	}
 	return nil
 }
@@ -172,6 +184,15 @@ func applyEnv(c *Config) {
 	set("MEMEX_EMBED_URL", &c.Embed.URL)
 	set("MEMEX_EMBED_MODEL", &c.Embed.Model)
 	set("MEMEX_EMBED_API_KEY", &c.Embed.APIKey)
+	if v := os.Getenv("MEMEX_TRUSTED_PROXIES"); v != "" {
+		var list []string
+		for _, part := range strings.Split(v, ",") {
+			if p := strings.TrimSpace(part); p != "" {
+				list = append(list, p)
+			}
+		}
+		c.TrustedProxies = list
+	}
 }
 
 func applyFile(c *Config, b []byte) error {
@@ -257,6 +278,16 @@ func fill(c *Config, m map[string]any) error {
 		}
 		if v, ok := num(lim, "requests_per_minute"); ok {
 			c.Limits.RequestsPerMinute = v
+		}
+	}
+	if list, ok := m["trusted_proxies"].([]any); ok {
+		c.TrustedProxies = c.TrustedProxies[:0]
+		for _, item := range list {
+			s, ok := item.(string)
+			if !ok {
+				return fmt.Errorf("trusted proxy entry is not a string")
+			}
+			c.TrustedProxies = append(c.TrustedProxies, s)
 		}
 	}
 	if pub, ok := m["public"].(map[string]any); ok {

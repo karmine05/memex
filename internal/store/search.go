@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -135,6 +136,7 @@ func (s *Store) InboxEvents(ctx context.Context, agentID string, after int64, li
 		FROM stream_events
 		WHERE id > $2
 		  AND (space_id LIKE 'dm/' || $1 || '/%' OR space_id LIKE 'dm/%/' || $1)
+		  AND space_id NOT LIKE 'dm/%/%/%'
 		ORDER BY id
 		LIMIT $3`, agentID, after, limit)
 	if err != nil {
@@ -165,12 +167,17 @@ func (s *Store) InboxNotes(ctx context.Context, agentID string, since int64, lim
 	if limit <= 0 {
 		limit = 50
 	}
+	// DM spaces are exactly two segments (dm/<a>/<b>); agent ids are
+	// server-issued UUIDs without '/'. The NOT LIKE guard keeps 3+ segment
+	// spaces (which agents can create as ordinary open spaces) out of every
+	// inbox, so participation stays enforced at the sink.
 	q := `
 		SELECT ` + versionColsNV + `
 		FROM stream_events se
 		JOIN note_versions nv ON nv.note_id = se.note_id AND nv.version = se.version
 		WHERE se.id > $2
 		  AND (se.space_id LIKE 'dm/' || $1 || '/%' OR se.space_id LIKE 'dm/%/' || $1)
+		  AND se.space_id NOT LIKE 'dm/%/%/%'
 		ORDER BY se.id ASC
 		LIMIT $3`
 	args := []any{agentID, since, limit}
@@ -182,6 +189,7 @@ func (s *Store) InboxNotes(ctx context.Context, agentID string, since int64, lim
 			WHERE se.id IN (
 			  SELECT id FROM stream_events
 			  WHERE space_id LIKE 'dm/' || $1 || '/%' OR space_id LIKE 'dm/%/' || $1
+			  AND space_id NOT LIKE 'dm/%/%/%'
 			  ORDER BY id DESC
 			  LIMIT $2
 			)
@@ -195,17 +203,36 @@ func (s *Store) InboxNotes(ctx context.Context, agentID string, since int64, lim
 	return collectVersions(rows)
 }
 
+// MaxEmbedAttempts caps retries of one row. A row at the cap is dead-letter:
+// skipped by PendingEmbeddings until an operator clears it via
+// POST /admin/re-embed, which resets the counter. Without the cap, one
+// persistently failing row head-of-line-blocked the whole pool.
+const MaxEmbedAttempts = 3
+
 func (s *Store) PendingEmbeddings(ctx context.Context, limit int) ([]Version, error) {
 	rows, err := s.Pool.Query(ctx, `
 		SELECT note_id::text, version, ''::text, ''::text, body, ''::text, ''::text, created_at
 		FROM note_versions
-		WHERE embedding IS NULL
+		WHERE embedding IS NULL AND embed_attempts < `+strconv.Itoa(MaxEmbedAttempts)+`
 		ORDER BY created_at
 		LIMIT $1`, limit)
 	if err != nil {
 		return nil, fmt.Errorf("pending embeds: %w", err)
 	}
 	return collectVersions(rows)
+}
+
+// RecordEmbedAttempt marks one failed attempt; at MaxEmbedAttempts the row
+// stops being selected. Callers treat the error as non-fatal: the row will
+// be retried on the next cycle anyway.
+func (s *Store) RecordEmbedAttempt(ctx context.Context, noteID string, version int64) error {
+	_, err := s.Pool.Exec(ctx, `
+		UPDATE note_versions SET embed_attempts = embed_attempts + 1
+		WHERE note_id=$1::uuid AND version=$2 AND embedding IS NULL`, noteID, version)
+	if err != nil {
+		return fmt.Errorf("embed attempt %s: %w", noteID, err)
+	}
+	return nil
 }
 
 func (s *Store) SetEmbedding(ctx context.Context, noteID string, version int64, literal string) error {
@@ -222,7 +249,7 @@ func (s *Store) ClearEmbeddings(ctx context.Context, after *time.Time) (int64, e
 	var n int64
 	err := s.Pool.QueryRow(ctx, `
 		WITH u AS (
-		  UPDATE note_versions SET embedding = NULL
+		  UPDATE note_versions SET embedding = NULL, embed_attempts = 0
 		  WHERE ($1::timestamptz IS NULL OR created_at >= $1)
 		  RETURNING 1
 		)

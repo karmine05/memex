@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/netip"
 	"os"
 	"strconv"
 	"strings"
@@ -42,6 +43,10 @@ type Server struct {
 
 	status  [600]atomic.Int64
 	auditMu sync.Mutex
+
+	healthMu    sync.Mutex
+	healthCache healthBody
+	healthAt    time.Time
 
 	testAgent *store.Agent // tests only: skip store token lookup
 }
@@ -361,12 +366,49 @@ func (s *Server) audit(event string, fields map[string]any) error {
 	return err
 }
 
-func clientIP(r *http.Request) string {
-	host, _, ok := strings.Cut(r.RemoteAddr, ":")
+// clientIP returns the rate-limit key for the caller. X-Forwarded-For is
+// honored only when the direct peer is one of the configured trusted
+// proxies (public mode behind Caddy); otherwise RemoteAddr alone is
+// trusted, because parsing the header unconditionally would let any client
+// spoof its own IP and escape the per-client budget.
+func (s *Server) clientIP(r *http.Request) string {
+	peer, _, ok := strings.Cut(r.RemoteAddr, ":")
 	if !ok {
-		return r.RemoteAddr
+		peer = r.RemoteAddr
 	}
-	return host
+	if !s.trustedProxy(peer) {
+		return peer
+	}
+	// Caddy appends the real client to X-Forwarded-For, so the last entry
+	// is the one the trusted edge wrote and the client cannot forge.
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		parts := strings.Split(xff, ",")
+		for i := len(parts) - 1; i >= 0; i-- {
+			if h := strings.TrimSpace(parts[i]); h != "" {
+				return h
+			}
+		}
+	}
+	return peer
+}
+
+func (s *Server) trustedProxy(ip string) bool {
+	if len(s.Cfg.TrustedProxies) == 0 {
+		return false
+	}
+	addr, err := netip.ParseAddr(ip)
+	if err != nil {
+		return false
+	}
+	for _, entry := range s.Cfg.TrustedProxies {
+		if entry == ip {
+			return true
+		}
+		if p, err := netip.ParsePrefix(entry); err == nil && p.Contains(addr) {
+			return true
+		}
+	}
+	return false
 }
 
 func parseAge(s string) (time.Duration, error) {

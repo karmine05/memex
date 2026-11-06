@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -253,7 +254,9 @@ func (s *Store) Counts(ctx context.Context) (versions int64, pending int64, err 
 	if err != nil {
 		return 0, 0, err
 	}
-	err = s.Pool.QueryRow(ctx, `SELECT count(*) FROM note_versions WHERE embedding IS NULL`).Scan(&pending)
+	// Dead-lettered rows (at the attempt cap) are not work, so the
+	// pending count excludes them: /healthz stays an actionable signal.
+	err = s.Pool.QueryRow(ctx, `SELECT count(*) FROM note_versions WHERE embedding IS NULL AND embed_attempts < `+strconv.Itoa(MaxEmbedAttempts)).Scan(&pending)
 	return versions, pending, err
 }
 

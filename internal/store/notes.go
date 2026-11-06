@@ -26,7 +26,16 @@ func (s *Store) Space(ctx context.Context, id string) (Space, error) {
 }
 
 func (s *Store) SetSpaceACL(ctx context.Context, id string, acl []byte) error {
-	tag, err := s.Pool.Exec(ctx, `UPDATE spaces SET acl_json=$2::jsonb WHERE space_id=$1`, id, acl)
+	// A replace that does not mention "locked" keeps the space's existing
+	// lock: locking is a separate admin act, and wiping it as a side effect
+	// of an ACL edit would silently re-open writes. An explicit
+	// {"locked":false} in the body still clears it.
+	tag, err := s.Pool.Exec(ctx, `
+		UPDATE spaces SET acl_json = CASE
+			WHEN $2::jsonb ? 'locked' THEN $2::jsonb
+			WHEN acl_json ? 'locked' AND (acl_json->>'locked') = 'true' THEN $2::jsonb || '{"locked": true}'::jsonb
+			ELSE $2::jsonb
+		END WHERE space_id=$1`, id, acl)
 	if err != nil {
 		return fmt.Errorf("acl %s: %w", id, err)
 	}
@@ -87,9 +96,9 @@ func (s *Store) UpdateNote(ctx context.Context, noteID, agentID, body, bodyHash,
 	if err != nil {
 		return WriteResult{}, fmt.Errorf("note %s: %w", noteID, err)
 	}
-	if baseHash != curHash {
-		return WriteResult{ConflictHash: curHash, PrevHash: prev}, ErrConflict
-	}
+	// Authorization before the conflict echo: the 409 body carries the
+	// current body_hash, which must not be observable by an agent the
+	// space ACL excludes (GET is ordered the same way).
 	var raw []byte
 	if err := tx.QueryRow(ctx, `SELECT acl_json FROM spaces WHERE space_id=$1`, space).Scan(&raw); err != nil {
 		return WriteResult{}, fmt.Errorf("space %s: %w", space, err)
@@ -98,6 +107,9 @@ func (s *Store) UpdateNote(ctx context.Context, noteID, agentID, body, bodyHash,
 		if err := allow(raw); err != nil {
 			return WriteResult{}, err
 		}
+	}
+	if baseHash != curHash {
+		return WriteResult{ConflictHash: curHash, PrevHash: prev}, ErrConflict
 	}
 	var hist int64
 	if err := tx.QueryRow(ctx, `SELECT coalesce(sum(octet_length(body)),0) FROM note_versions WHERE note_id=$1::uuid`, noteID).Scan(&hist); err != nil {

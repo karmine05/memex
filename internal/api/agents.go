@@ -55,7 +55,7 @@ type registerReq struct {
 }
 
 func (s *Server) register(w http.ResponseWriter, r *http.Request) {
-	if !s.Limit.Allow("ip:"+clientIP(r), 30) {
+	if !s.Limit.Allow("ip:"+s.clientIP(r), 30) {
 		retryAfter(w, 1)
 		writeError(w, http.StatusTooManyRequests, "rate limit")
 		return
@@ -124,7 +124,7 @@ func (s *Server) issueAgent(w http.ResponseWriter, ctx context.Context, req regi
 }
 
 func (s *Server) token(w http.ResponseWriter, r *http.Request) {
-	if !s.Limit.Allow("ip:"+clientIP(r), 60) {
+	if !s.Limit.Allow("ip:"+s.clientIP(r), 60) {
 		retryAfter(w, 1)
 		writeError(w, http.StatusTooManyRequests, "rate limit")
 		return
@@ -144,7 +144,9 @@ func (s *Server) token(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if ag.Status != "active" {
-		writeError(w, http.StatusForbidden, "agent is not active")
+		// Same 401 as an unknown key: distinguishing "suspended/revoked"
+		// pre-auth lets a prober enumerate live agent state.
+		writeError(w, http.StatusUnauthorized, "api key invalid")
 		return
 	}
 	tok, err := auth.NewToken()

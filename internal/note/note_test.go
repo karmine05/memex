@@ -128,6 +128,41 @@ func TestACL(t *testing.T) {
 	}
 }
 
+// Regression for the read-ACL fallback: a non-empty read list must deny
+// strangers even when the write list is empty, absent, or null. The "writers
+// can read" fallback applies only to explicitly listed writers.
+func TestACLPartialReadListDeniesStrangers(t *testing.T) {
+	cases := []struct {
+		name  string
+		acl   string
+		agent string
+		want  bool
+	}{
+		{"read only, write absent", `{"read":["a","b"]}`, "c", false},
+		{"read only, write null", `{"read":["a","b"],"write":null}`, "c", false},
+		{"read only, write empty", `{"read":["a","b"],"write":[]}`, "c", false},
+		{"read only, write absent, listed reader", `{"read":["a","b"]}`, "a", true},
+		{"explicit writer reads", `{"read":["a"],"write":["b"]}`, "b", true},
+		{"explicit writer absent from read list", `{"read":["a"],"write":["b"]}`, "c", false},
+		{"empty read list stays open", `{"read":[]}`, "c", true},
+		{"malformed read value fails closed", `{"read":"x"}`, "c", false},
+		{"malformed write value fails closed", `{"read":["a"],"write":5}`, "a", false},
+	}
+	for _, tc := range cases {
+		if got := Can([]byte(tc.acl), tc.agent, false); got != tc.want {
+			t.Fatalf("%s: Can(%s, %s) = %v, want %v", tc.name, tc.acl, tc.agent, got, tc.want)
+		}
+	}
+	// ValidACL accepts exactly the shapes both policy implementations agree on.
+	if !ValidACL([]byte(`{"read":["a"],"write":["b"],"locked":true}`)) ||
+		!ValidACL([]byte(`{}`)) ||
+		ValidACL([]byte(`{"read":"x"}`)) ||
+		ValidACL([]byte(`{"write":5}`)) ||
+		ValidACL([]byte(`{"read":["a","b"]}`[:0])) == false {
+		t.Fatal("ValidACL")
+	}
+}
+
 func TestNewIDLooksLikeUUID(t *testing.T) {
 	id, err := NewID(time.UnixMilli(1_700_000_000_000))
 	if err != nil {

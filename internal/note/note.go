@@ -233,6 +233,18 @@ func parseACL(raw []byte) (aclDoc, error) {
 	return doc, nil
 }
 
+// ValidACL reports whether raw is a structurally acceptable ACL document.
+// The Go policy (Can) fails closed on anything that does not unmarshal into
+// {read,write []string, locked bool}; the admin endpoint rejects the same
+// shapes so the SQL twin (memex_can_read) can never see a malformed list.
+func ValidACL(raw []byte) bool {
+	if len(raw) == 0 {
+		return true // default-open; SetSpaceACL normalizes to {}
+	}
+	_, err := parseACL(raw)
+	return err == nil
+}
+
 func listed(ids []string, agentID string) bool {
 	if len(ids) == 0 {
 		return true
@@ -262,7 +274,12 @@ func Can(raw []byte, agentID string, write bool) bool {
 	if listed(list, agentID) {
 		return true
 	}
-	if !write && listed(doc.Write, agentID) {
+	// Writers can read — but only EXPLICITLY listed writers. An empty or
+	// absent write list is the default-open convention for writes, not a
+	// read grant: consulting it here would void every non-empty read list
+	// ({"read":["a","b"]} would open the space to all agents) and disagreed
+	// with memex_can_read, which denies that shape on the search path.
+	if !write && len(doc.Write) > 0 && listed(doc.Write, agentID) {
 		return true
 	}
 	return false

@@ -45,10 +45,40 @@ func (s *Server) healthInfo(ctx context.Context) healthBody {
 	return body
 }
 
+// healthCacheTTL bounds how often the keyless endpoint may fan out to
+// Postgres and the embedder. Health is a liveness signal, not a live
+// counter: five seconds is far below any operator's polling need and drops
+// the unauthenticated per-call work by roughly the ratio of callers to one.
+const healthCacheTTL = 5 * time.Second
+
 func (s *Server) health(w http.ResponseWriter, r *http.Request) {
+	// Keyless route on the agent listener (all interfaces in private mode):
+	// it is rate-limited like any other unauthenticated surface.
+	if !s.Limit.Allow("ip:"+s.clientIP(r), 30) {
+		retryAfter(w, 1)
+		writeError(w, http.StatusTooManyRequests, "rate limit")
+		return
+	}
+	s.healthMu.Lock()
+	if !s.healthAt.IsZero() && time.Since(s.healthAt) < healthCacheTTL {
+		body := s.healthCache
+		s.healthMu.Unlock()
+		writeHealth(w, body)
+		return
+	}
+	s.healthMu.Unlock()
+
 	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 	defer cancel()
 	body := s.healthInfo(ctx)
+	s.healthMu.Lock()
+	s.healthCache = body
+	s.healthAt = time.Now()
+	s.healthMu.Unlock()
+	writeHealth(w, body)
+}
+
+func writeHealth(w http.ResponseWriter, body healthBody) {
 	code := http.StatusOK
 	if body.DB != "ok" {
 		code = http.StatusServiceUnavailable
